@@ -1,0 +1,19 @@
+{
+  "name": "legend-org",
+  "version": "1.0.0",
+  "description": "리얼월드 - 레전드 조직 관리 시스템 (Node + JSON DB backend)",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
