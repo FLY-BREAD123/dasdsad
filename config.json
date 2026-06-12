@@ -1,0 +1,11 @@
+{
+    "token": "여기에_봇_토큰_붙여넣기",
+    "logChannels": {
+        "default": "기본_로그채널_ID",
+        "chat": "채팅로그_채널_ID",
+        "member": "입퇴장로그_채널_ID",
+        "voice": "음성로그_채널_ID"
+    },
+    "logChat": true,
+    "logVoiceDetail": true
+}

@@ -1,17 +1,12 @@
 {
-  "name": "perfect-bank",
-  "version": "1.0.0",
-  "description": "FiveM 퍼펙트 서버 - 은행 조직 전용 웹사이트",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "express": "^4.19.2",
-    "express-session": "^1.18.0",
-    "web-push": "^3.6.7"
-  }
+    "name": "discord-logger-bot",
+    "version": "1.0.0",
+    "description": "디스코드 서버 활동 로깅 봇 (채팅/입퇴장/음성방)",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js"
+    },
+    "dependencies": {
+        "discord.js": "^14.16.3"
+    }
 }
