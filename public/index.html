@@ -1,536 +1,1007 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#6D28D9" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🛡️%3C/text%3E%3C/svg%3E" />
-  <title>북부 경찰서(보안국) 인트라넷</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@400;500;600;700;800;900&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>병동 · The Ward</title>
+<style>
+  :root{ --blood:#8a0f12; --blood-bright:#d11e22; --bone:#cdbfae; --rot:#4a5240; --ally:#5fa8d8; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;background:#000;overflow:hidden;font-family:Georgia,'Times New Roman',serif;color:var(--bone);-webkit-user-select:none;user-select:none;touch-action:none;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000;}
+  canvas{display:block;image-rendering:pixelated;}
+  .hidden{display:none!important;}
+
+  /* 화면 */
+  .screen{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:radial-gradient(ellipse at center,#0a0708 0%,#000 70%);overflow-y:auto;}
+  .title{font-size:clamp(56px,15vw,140px);font-weight:bold;letter-spacing:.18em;color:var(--bone);text-shadow:0 0 18px rgba(0,0,0,.9),0 0 2px var(--blood-bright);position:relative;animation:flick 4.5s infinite;}
+  .title::after{content:"병동";position:absolute;left:0;top:0;color:var(--blood);clip-path:inset(0 0 55% 0);transform:translate(-3px,1px);opacity:.55;animation:glitch 6s infinite;}
+  @keyframes flick{0%,97%,100%{opacity:1}98%{opacity:.25}98.5%{opacity:.85}99%{opacity:.15}}
+  @keyframes glitch{0%,90%,100%{transform:translate(-3px,1px)}92%{transform:translate(4px,-2px)}94%{transform:translate(-5px,2px)}}
+  .subtitle{margin-top:6px;font-size:clamp(12px,2.6vw,16px);color:#6e655b;letter-spacing:.45em;text-transform:uppercase;}
+  .story{max-width:540px;margin:30px auto 6px;font-size:clamp(13px,3vw,16px);line-height:1.9;color:#9a8f82;}
+  .story b{color:var(--blood-bright);font-weight:normal;}
+
+  .field{margin-top:26px;display:flex;flex-direction:column;gap:8px;align-items:center;}
+  .field label{font-size:11px;letter-spacing:.25em;color:#6e655b;text-transform:uppercase;}
+  input.txt{width:280px;padding:12px 16px;background:#0e0b0a;border:1px solid #2c2622;color:var(--bone);font-family:Georgia,serif;font-size:16px;text-align:center;letter-spacing:.1em;outline:none;border-radius:4px;}
+  input.txt:focus{border-color:var(--blood);}
+  input.code{text-transform:uppercase;letter-spacing:.4em;font-size:22px;}
+
+  .btnrow{margin-top:24px;display:flex;flex-direction:column;gap:12px;align-items:center;}
+  .btn{padding:14px 44px;font-family:Georgia,serif;font-size:17px;letter-spacing:.28em;color:var(--bone);background:transparent;border:1px solid #3a302b;cursor:pointer;text-transform:uppercase;transition:.25s;border-radius:3px;min-width:260px;}
+  .btn:hover{color:#fff;border-color:var(--blood);background:rgba(138,15,18,.12);letter-spacing:.34em;box-shadow:0 0 30px rgba(138,15,18,.25);}
+  .btn.ghost{border-color:#241f1c;color:#8a8076;font-size:14px;letter-spacing:.2em;min-width:200px;padding:11px 30px;}
+  .btn.ghost:hover{color:var(--bone);border-color:#4a403a;background:rgba(255,255,255,.02);}
+  .btn:disabled{opacity:.35;cursor:not-allowed;}
+  .hint{margin-top:18px;font-size:12px;color:#4a443e;letter-spacing:.15em;max-width:440px;line-height:1.7;}
+  .err{margin-top:14px;color:var(--blood-bright);font-size:13px;letter-spacing:.05em;min-height:18px;}
+
+  /* 대기실 */
+  .roomcode{font-size:clamp(40px,9vw,72px);letter-spacing:.3em;color:#f0d77a;font-family:'Courier New',monospace;text-shadow:0 0 24px rgba(240,215,122,.3);margin:8px 0;}
+  .codehint{font-size:12px;color:#6e655b;letter-spacing:.2em;}
+  .players-list{margin:26px auto;display:flex;flex-direction:column;gap:8px;width:300px;}
+  .pl{display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(8,7,7,.6);border:1px solid #241f1c;border-radius:4px;font-size:15px;}
+  .pl .dot{width:8px;height:8px;border-radius:50%;background:var(--ally);box-shadow:0 0 8px var(--ally);}
+  .pl .host{margin-left:auto;font-size:10px;color:#f0d77a;letter-spacing:.15em;}
+  .waiting{font-size:13px;color:#6e655b;letter-spacing:.2em;animation:pulse 1.6s infinite;margin-top:6px;}
+  @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+
+  /* HUD */
+  #hud{position:fixed;inset:0;z-index:30;pointer-events:none;font-family:'Courier New',monospace;}
+  .crosshair{position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:rgba(205,191,174,.35);}
+  .objective{position:absolute;left:26px;top:22px;font-size:12px;letter-spacing:.16em;color:#8a8076;}
+  .objective .fuse{color:var(--blood-bright);font-size:15px;font-weight:bold;}
+  .objective .sub{display:block;margin-top:5px;color:#5e564e;font-size:11px;}
+  .squad{position:absolute;left:26px;top:74px;font-size:11px;letter-spacing:.08em;}
+  .squad .m{color:var(--ally);margin-bottom:3px;}
+  .squad .m.down{color:#5e564e;text-decoration:line-through;}
+  .squad .m.out{color:#7dba8a;}
+  .heart{position:absolute;right:26px;top:22px;text-align:right;}
+  .heart .bpm{font-size:34px;font-weight:bold;color:var(--blood-bright);line-height:1;text-shadow:0 0 12px rgba(209,30,34,.4);}
+  .heart .bpmlab{font-size:10px;letter-spacing:.25em;color:#7a7066;margin-top:2px;}
+  #heartIcon{display:inline-block;color:var(--blood-bright);}
+  .meters{position:absolute;left:26px;bottom:90px;width:178px;}
+  .meter{margin-bottom:11px;}
+  .meter .lab{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.2em;color:#7a7066;text-transform:uppercase;margin-bottom:4px;}
+  .bar{height:7px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);overflow:hidden;}
+  .bar>i{display:block;height:100%;width:100%;transition:width .12s linear;}
+  #batFill{background:linear-gradient(90deg,#caa84a,#f0d77a);}
+  #stamFill{background:linear-gradient(90deg,#3f7a86,#6fc0cf);}
+  .flashstate{position:absolute;right:26px;bottom:90px;text-align:right;font-size:11px;letter-spacing:.18em;text-transform:uppercase;}
+  .flashstate .on{color:#f0d77a;} .flashstate .off{color:#5e564e;}
+  #minimap{position:absolute;right:24px;bottom:128px;border:1px solid rgba(205,191,174,.14);background:rgba(0,0,0,.6);}
+  #prompt{position:absolute;left:50%;top:62%;transform:translateX(-50%);font-family:Georgia,serif;font-size:16px;letter-spacing:.08em;color:#e8dccb;text-shadow:0 0 12px #000;opacity:0;transition:opacity .15s;}
+  #prompt .k{display:inline-block;padding:2px 9px;margin:0 4px;border:1px solid #4a403a;border-radius:3px;background:#100d0c;font-family:monospace;}
+  #toast{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);font-family:Georgia,serif;font-size:17px;letter-spacing:.06em;color:#cdbfae;text-shadow:0 0 14px #000;opacity:0;transition:opacity .4s;text-align:center;max-width:80%;}
+  .threat-arrow{position:absolute;color:var(--blood-bright);font-size:26px;opacity:0;transition:opacity .2s;text-shadow:0 0 16px var(--blood-bright);}
+
+  /* 퀵슬롯 */
+  #quickslots{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:10px;z-index:31;}
+  .slot{position:relative;width:60px;height:60px;border:1px solid rgba(205,191,174,.16);background:rgba(8,7,7,.62);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:.15s;}
+  .slot.selected{border-color:var(--blood);background:rgba(138,15,18,.16);box-shadow:0 0 18px rgba(138,15,18,.32);transform:translateY(-5px);}
+  .slot .num{position:absolute;top:3px;left:6px;font-size:10px;color:#6e655b;font-family:monospace;}
+  .slot .nm{font-size:9px;letter-spacing:.04em;color:#8a8076;margin-top:3px;text-transform:uppercase;}
+  .slot.selected .nm{color:var(--bone);}
+  .slot .ic{width:25px;height:25px;}
+  .slot .cd{position:absolute;inset:0;background:rgba(0,0,0,.72);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--blood-bright);font-family:monospace;}
+  .slot .meter-mini{position:absolute;bottom:3px;left:5px;right:5px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
+  .slot .meter-mini i{display:block;height:100%;width:100%;background:#caa84a;transition:width .15s;}
+
+  /* 노트 모달 */
+  #noteModal{position:fixed;inset:0;z-index:55;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.82);}
+  .note-paper{max-width:460px;width:86%;background:linear-gradient(160deg,#16140f,#0d0b08);border:1px solid #3a3228;padding:34px 36px;box-shadow:0 0 60px rgba(0,0,0,.8),inset 0 0 40px rgba(0,0,0,.5);position:relative;}
+  .note-paper .nt{font-size:13px;letter-spacing:.2em;color:#8a7a5a;text-transform:uppercase;border-bottom:1px solid #2c2622;padding-bottom:12px;margin-bottom:18px;}
+  .note-paper .nb{font-size:15px;line-height:2;color:#bcae98;white-space:pre-line;font-style:italic;}
+  .note-paper .nprog{margin-top:22px;font-size:11px;letter-spacing:.15em;color:#5e564e;}
+  .note-paper .nclose{margin-top:18px;font-size:12px;letter-spacing:.2em;color:#6e655b;}
+
+  /* 엔딩 */
+  .endtitle{font-size:clamp(34px,8vw,68px);letter-spacing:.1em;margin-bottom:10px;}
+  .end-death{color:var(--blood-bright);text-shadow:0 0 40px rgba(209,30,34,.5);}
+  .end-escape{color:#b9a98f;}
+  .end-partial{color:#c8b07a;text-shadow:0 0 30px rgba(200,176,122,.3);}
+  .end-true{color:#9fb59a;text-shadow:0 0 40px rgba(159,181,154,.4);}
+  .endtext{max-width:560px;margin:14px auto;font-size:clamp(14px,3vw,17px);line-height:1.95;color:#9a8f82;white-space:pre-line;}
+  .endstats{margin:22px auto;font-size:13px;color:#6e655b;letter-spacing:.1em;line-height:1.9;}
+  .endstats b{color:var(--bone);}
+
+  /* 포스트 이펙트 */
+  #vignette{position:fixed;inset:0;z-index:20;pointer-events:none;box-shadow:inset 0 0 min(30vw,300px) min(5vw,55px) rgba(0,0,0,.5);}
+  #damage{position:fixed;inset:0;z-index:25;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,rgba(138,15,18,.6) 100%);opacity:0;transition:opacity .15s;}
+  #grain{position:fixed;inset:0;z-index:22;pointer-events:none;opacity:.05;mix-blend-mode:overlay;}
+  #scare{position:fixed;inset:0;z-index:60;pointer-events:none;display:flex;align-items:center;justify-content:center;background:#000;opacity:0;}
+  #scare canvas{width:min(80vw,620px);height:auto;}
+  #deadOverlay{position:fixed;inset:0;z-index:40;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(20,0,0,.55);opacity:0;transition:opacity 1s;}
+  #deadOverlay .dt{font-size:clamp(30px,7vw,56px);color:var(--blood-bright);letter-spacing:.1em;text-shadow:0 0 30px rgba(209,30,34,.5);}
+  #deadOverlay .ds{margin-top:14px;font-size:14px;color:#8a7066;letter-spacing:.15em;}
+  .mobilewarn{display:none;margin-top:18px;font-size:13px;color:#a06b3a;letter-spacing:.1em;max-width:420px;line-height:1.7;}
+</style>
 </head>
 <body>
-  <!-- 배경 낙엽 -->
-  <canvas id="leaves"></canvas>
-  <div class="grain"></div>
+<div id="wrap"><canvas id="game"></canvas></div>
 
-  <!-- ================= 상단바 (로그인 후 노출) ================= -->
-  <header id="topbar" class="topbar hidden">
-    <div class="brand">
-      <span class="brand-seal">🛡️</span>
-      <div class="brand-text">
-        <strong>북부 경찰서</strong>
-        <small>NORTH POLICE · 보안국</small>
-      </div>
-    </div>
-
-    <nav class="topnav">
-      <a data-page="home" class="nav-link active">홈</a>
-      <a data-page="attendance" class="nav-link">근태</a>
-      <a data-page="report" class="nav-link">보고서</a>
-      <a data-page="leave" class="nav-link">휴가</a>
-      <a data-page="notice" class="nav-link">공지</a>
-      <a data-page="roster" class="nav-link">직급표</a>
-      <a data-page="admin" class="nav-link nav-admin hidden" id="nav-admin">관리</a>
-    </nav>
-
-    <div class="topbar-right">
-      <button id="bell" class="bell" title="알람" aria-label="알람">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
-        <span id="bell-count" class="bell-count hidden">0</span>
-      </button>
-      <div class="user-chip" id="user-chip">
-        <span class="chip-icon" id="chip-icon">🕋</span>
-        <span class="chip-meta">
-          <b id="chip-name">-</b>
-          <i id="chip-rank">-</i>
-        </span>
-      </div>
-      <button id="logout" class="btn-ghost">로그아웃</button>
-    </div>
-  </header>
-
-  <!-- 알람 패널 -->
-  <div id="notif-panel" class="notif-panel hidden">
-    <div class="notif-head">
-      <span>알람</span>
-      <button id="notif-clear" class="link-sm">모두 읽음</button>
-    </div>
-    <div class="notif-settings">
-      <label class="switch-row">
-        <span>알람 소리 / 팝업</span>
-        <button id="alarm-toggle" class="switch" role="switch" aria-checked="true"><span class="switch-dot"></span></button>
-      </label>
-      <button id="notif-permit" class="link-sm permit-btn hidden">🔔 브라우저 알림 켜기 (탭을 닫아도 24시간 알림)</button>
-      <p id="notif-permit-note" class="permit-note hidden">브라우저 알림이 켜져 있어요. 이 탭이 열려 있으면 다른 창에 있어도 알림이 떠요.</p>
-    </div>
-    <div id="notif-list" class="notif-list"></div>
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div class="crosshair"></div>
+  <div class="objective">퓨즈 <span class="fuse" id="fuseCount">0 / 3</span><span class="sub" id="objSub">비상 전원을 복구하라</span></div>
+  <div class="squad" id="squad"></div>
+  <div class="heart"><div class="bpm"><span id="heartIcon">♥</span> <span id="bpmVal">72</span></div><div class="bpmlab">심박 / BPM</div></div>
+  <div class="meters">
+    <div class="meter"><div class="lab"><span>손전등 배터리</span><span id="batPct">100%</span></div><div class="bar"><i id="batFill"></i></div></div>
+    <div class="meter"><div class="lab"><span>체력</span><span id="stamPct">100%</span></div><div class="bar"><i id="stamFill"></i></div></div>
   </div>
-
-  <main id="app">
-
-    <!-- ================= 로그인 / 회원가입 ================= -->
-    <section id="view-auth" class="view auth-view">
-      <div class="auth-hero">
-        <p class="kicker">FiveM · 보안국</p>
-        <h1 class="auth-title">북부<br/>경찰서</h1>
-        <p class="auth-sub">보안국 전용 인트라넷에 오신 것을 환영합니다.<br/>가입은 <b>1 IP 당 1 계정</b>이며 <b>관리자 승인제</b>로 운영됩니다.</p>
-        <ul class="auth-points">
-          <li><span>✶</span> 실시간 출근 · 퇴근 근태 관리</li>
-          <li><span>✶</span> 공지사항 · 경고 알람</li>
-          <li><span>✶</span> 직급표 · 인원 현황</li>
-        </ul>
-      </div>
-
-      <div class="auth-card">
-        <div class="auth-tabs">
-          <button class="auth-tab active" data-tab="login">로그인</button>
-          <button class="auth-tab" data-tab="register">회원가입</button>
-        </div>
-
-        <!-- 로그인 폼 -->
-        <form id="form-login" class="auth-form">
-          <label>아이디
-            <input name="username" type="text" autocomplete="username" placeholder="아이디" required />
-          </label>
-          <label>비밀번호
-            <input name="password" type="password" autocomplete="current-password" placeholder="비밀번호" required />
-          </label>
-          <button type="submit" class="btn-primary">로그인</button>
-          <p class="form-msg" id="login-msg"></p>
-          <div id="discord-login-wrap" class="discord-login-wrap hidden">
-            <div class="or-divider"><span>또는</span></div>
-            <a href="/api/auth/discord" id="discord-login-btn" class="btn-discord">
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20.32 4.37A19.8 19.8 0 0 0 15.45 3a13.8 13.8 0 0 0-.62 1.27 18.3 18.3 0 0 0-5.66 0A13 13 0 0 0 8.55 3a19.7 19.7 0 0 0-4.88 1.37C.55 9 .29 13.47.45 17.89a19.9 19.9 0 0 0 6 3.03c.49-.66.91-1.36 1.27-2.1-.7-.26-1.36-.58-2-.96.17-.12.33-.25.49-.38a14.2 14.2 0 0 0 12.1 0c.16.13.32.26.49.38-.64.38-1.31.7-2 .96.36.74.79 1.44 1.27 2.1a19.8 19.8 0 0 0 6-3.03c.2-5.12-.32-9.55-3.5-13.52ZM8.02 15.18c-1.16 0-2.12-1.06-2.12-2.37s.93-2.38 2.12-2.38 2.14 1.07 2.12 2.38c0 1.31-.94 2.37-2.12 2.37Zm7.96 0c-1.17 0-2.12-1.06-2.12-2.37s.93-2.38 2.12-2.38 2.13 1.07 2.12 2.38c0 1.31-.93 2.37-2.12 2.37Z"/></svg>
-              디스코드로 로그인
-            </a>
-          </div>
-        </form>
-
-        <!-- 가입 폼 -->
-        <form id="form-register" class="auth-form hidden">
-          <label>아이디
-            <input name="username" type="text" autocomplete="username" placeholder="2~20자" required />
-          </label>
-          <label>고유번호 (고번)
-            <input name="gobun" type="text" inputmode="numeric" placeholder="예) 1024" required />
-          </label>
-          <label>직급
-            <select name="rank" id="reg-rank" required>
-              <option value="" disabled selected>직급을 선택하세요</option>
-            </select>
-          </label>
-          <label>팀 (선택)
-            <select name="team" id="reg-team">
-              <option value="">팀 없음</option>
-            </select>
-          </label>
-          <label id="reg-teamrole-wrap" class="hidden">팀 직책
-            <select name="teamRole" id="reg-teamrole"></select>
-          </label>
-          <label>비밀번호
-            <input name="password" type="password" autocomplete="new-password" placeholder="4자 이상" required />
-          </label>
-          <label>비밀번호 확인
-            <input name="password2" type="password" autocomplete="new-password" placeholder="비밀번호 재입력" required />
-          </label>
-          <button type="submit" class="btn-primary">가입 신청</button>
-          <p class="form-note">※ 1 IP 당 1 계정 · 고유번호 중복 불가 · 관리자 승인 후 이용 가능</p>
-          <p class="form-msg" id="register-msg"></p>
-        </form>
-      </div>
-    </section>
-
-    <!-- ================= 승인 대기 ================= -->
-    <section id="view-pending" class="view pending-view hidden">
-      <div class="pending-card">
-        <div class="pending-emblem">⏳</div>
-        <h2>승인 대기중</h2>
-        <p>가입 신청이 정상적으로 접수되었습니다.<br/>관리자 승인이 완료되면 모든 기능을 이용할 수 있습니다.</p>
-        <div class="pending-meta">
-          <div><span>아이디</span><b id="pending-name">-</b></div>
-          <div><span>고유번호</span><b id="pending-gobun">-</b></div>
-        </div>
-        <button id="pending-logout" class="btn-ghost wide">로그아웃</button>
-      </div>
-    </section>
-
-    <!-- ================= 대시보드 ================= -->
-    <section id="view-dashboard" class="view dashboard hidden">
-
-      <!-- 히어로 스트립 -->
-      <div class="hero-strip">
-        <div class="hero-left">
-          <p class="kicker">환영합니다</p>
-          <h2 id="hero-name">요원님</h2>
-          <p class="hero-rank"><span id="hero-icon">🕋</span> <span id="hero-rankname">-</span> · <span id="hero-tier">-</span></p>
-        </div>
-        <div class="hero-clock">
-          <div id="clock-time" class="clock-time">--:--:--</div>
-          <div id="clock-date" class="clock-date">----년 --월 --일</div>
-        </div>
-      </div>
-
-      <!-- 출근/퇴근 -->
-      <!-- 홈 대시보드 -->
-      <div class="dash-page active" data-page="home">
-        <div class="stat-grid">
-          <div class="stat-card"><span class="stat-ico">🟢</span><div class="stat-meta"><b id="st-working">0</b><span>현재 근무중</span></div></div>
-          <div class="stat-card"><span class="stat-ico">👥</span><div class="stat-meta"><b id="st-members">0</b><span>전체 인원</span></div></div>
-          <div class="stat-card"><span class="stat-ico">📅</span><div class="stat-meta"><b id="st-today">0</b><span>오늘 출근</span></div></div>
-          <div class="stat-card"><span class="stat-ico">🧾</span><div class="stat-meta"><b id="st-myreports">0</b><span>내 보고서</span></div></div>
-        </div>
-
-        <div class="home-cols">
-          <section class="card home-card">
-            <div class="card-head"><h3>내 현황</h3></div>
-            <ul class="home-me">
-              <li><span>최근 7일 근무</span><b id="hm-week">0시간 0분</b></li>
-              <li><span>내 총 점수</span><b id="hm-sales">0점</b></li>
-              <li><span>내 보고서</span><b id="hm-reports">0건</b></li>
-              <li><span>내 경고</span><b id="hm-warn">0건</b></li>
-            </ul>
-          </section>
-
-          <section class="card home-card">
-            <div class="card-head"><h3>🏆 점수 순위</h3><span class="muted" style="font-size:.78rem">RP 점수</span></div>
-            <ol id="home-sellers" class="home-sellers"><li class="muted">아직 보고서가 없습니다.</li></ol>
-          </section>
-        </div>
-
-        <section class="card home-card" id="home-notice-card">
-          <div class="card-head"><h3>📢 최신 공지</h3><a data-goto="notice" class="link-sm goto-link">전체 보기</a></div>
-          <div id="home-notice" class="home-notice"><p class="muted">공지가 없습니다.</p></div>
-        </section>
-
-        <section class="card home-admin hidden" id="home-admin">
-          <div class="card-head"><h3>관리자 알림</h3></div>
-          <div class="home-admin-row">
-            <a data-goto="admin" class="home-alert" id="ha-pending"><b>0</b><span>승인 대기</span></a>
-            <a data-goto="admin" class="home-alert" id="ha-leave"><b>0</b><span>휴가 대기</span></a>
-            <a data-goto="admin" class="home-alert danger" id="ha-kick"><b>0</b><span>강퇴 검토 대상</span></a>
-          </div>
-        </section>
-      </div>
-
-      <!-- 근태 -->
-      <div class="dash-page" data-page="attendance">
-        <section id="sec-attendance" class="card att-card">
-          <div class="card-head">
-            <h3>근태 관리</h3>
-            <span id="att-status" class="att-badge off">퇴근 상태</span>
-          </div>
-          <div class="att-body">
-            <div class="att-buttons">
-              <button id="btn-in" class="btn-in">출근</button>
-              <button id="btn-out" class="btn-out">퇴근</button>
-            </div>
-            <div class="att-today">
-              <p class="att-today-label">오늘 기록</p>
-              <p id="att-today-val" class="att-today-val">기록 없음</p>
-            </div>
-          </div>
-          <div class="att-log">
-            <p class="att-log-title">최근 근태</p>
-            <ul id="att-log-list" class="att-log-list"><li class="muted">기록이 없습니다.</li></ul>
-          </div>
-        </section>
-
-        <section class="card warn-card att-warn">
-          <div class="card-head">
-            <h3>내 경고</h3>
-            <span id="warn-total" class="warn-pill">0건</span>
-          </div>
-          <ul id="warn-list" class="warn-list"><li class="muted">경고 기록이 없습니다.</li></ul>
-        </section>
-      </div>
-
-      <!-- 판매 보고서 -->
-      <section id="sec-report" class="card report-card dash-page" data-page="report">
-        <div class="card-head">
-          <h3>RP 보고서</h3>
-          <span class="report-hint">RP 결과를 기록하면 점수가 쌓입니다</span>
-        </div>
-        <form id="form-report" class="report-form">
-          <label class="report-field"><span class="rf-label">RP 종류</span>
-            <select id="rep-category"></select>
-          </label>
-          <label class="report-field"><span class="rf-label">함께한 사람</span>
-            <input id="rep-participants" type="text" placeholder="예) 홍길동, 김철수 (쉼표로 구분)" />
-          </label>
-          <div class="report-field">
-            <span class="rf-label">결과</span>
-            <div class="result-seg" id="rep-result-seg">
-              <button type="button" class="result-opt win active" data-result="승리">🏆 승리</button>
-              <button type="button" class="result-opt lose" data-result="패배">💀 패배</button>
-            </div>
-          </div>
-          <label class="report-field"><span class="rf-label">상세 내용</span>
-            <textarea id="rep-content" rows="3" placeholder="상황 설명 (선택)"></textarea>
-          </label>
-          <button type="submit" class="btn-primary">보고서 제출</button>
-          <p class="form-msg" id="report-msg"></p>
-        </form>
-        <div class="report-mine">
-          <p class="report-mine-title">내가 제출한 RP 보고서</p>
-          <ul id="report-list" class="report-list"><li class="muted">제출한 보고서가 없습니다.</li></ul>
-        </div>
-      </section>
-
-      <!-- 휴가 신청 -->
-      <section id="sec-leave" class="card leave-card dash-page" data-page="leave">
-        <div class="card-head">
-          <h3>휴가 신청</h3>
-          <span class="report-hint">연차 · 병가 등 휴가를 신청하고 승인 상태를 확인하세요</span>
-        </div>
-        <form id="form-leave" class="report-form">
-          <label class="report-field"><span class="rf-label">종류</span>
-            <select id="lv-type"></select>
-          </label>
-          <div class="leave-dates">
-            <label class="report-field"><span class="rf-label">시작일</span>
-              <input id="lv-start" type="date" />
-            </label>
-            <label class="report-field"><span class="rf-label">종료일</span>
-              <input id="lv-end" type="date" />
-            </label>
-          </div>
-          <label class="report-field"><span class="rf-label">사유</span>
-            <textarea id="lv-reason" rows="3" placeholder="휴가 사유를 입력하세요"></textarea>
-          </label>
-          <button type="submit" class="btn-primary">휴가 신청</button>
-          <p class="form-msg" id="leave-msg"></p>
-        </form>
-        <div class="report-mine">
-          <p class="report-mine-title">내 휴가 신청 내역</p>
-          <ul id="leave-list" class="leave-list"><li class="muted">신청 내역이 없습니다.</li></ul>
-        </div>
-      </section>
-
-      <!-- 개인 프로필 -->
-      <section id="sec-profile" class="card profile-card dash-page" data-page="profile">
-        <div class="card-head">
-          <h3>프로필</h3>
-          <button id="profile-back" class="link-sm">← 뒤로</button>
-        </div>
-        <div id="profile-body"><p class="muted">프로필을 불러오는 중…</p></div>
-      </section>
-
-      <!-- 공지 -->
-      <section id="sec-notice" class="card notice-card dash-page" data-page="notice">
-        <div class="card-head">
-          <h3>공지사항</h3>
-          <button id="btn-new-notice" class="link-sm hidden">+ 작성</button>
-        </div>
-        <ul id="notice-list" class="notice-list"><li class="muted">공지가 없습니다.</li></ul>
-      </section>
-
-      <!-- 직급표 -->
-      <section id="sec-roster" class="card roster-card dash-page" data-page="roster">
-        <div class="card-head roster-head">
-          <h3>직급표</h3>
-          <span class="roster-total">총인원 <b id="roster-total">0</b></span>
-        </div>
-        <div id="roster" class="roster"></div>
-
-        <div class="team-section">
-          <div class="card-head roster-head" style="margin-top:6px">
-            <h3>팀 편성</h3>
-            <span class="roster-total">직급과 별개</span>
-          </div>
-          <div id="team-roster" class="team-roster"></div>
-        </div>
-      </section>
-
-      <!-- 관리자 패널 -->
-      <section id="sec-admin" class="card admin-card dash-page hidden" data-page="admin">
-        <div class="card-head">
-          <h3>관리자 콘솔</h3>
-          <div class="admin-tabs">
-            <button class="admin-tab active" data-atab="pending">승인 대기 <span id="pending-badge" class="mini-badge hidden">0</span></button>
-            <button class="admin-tab" data-atab="members">회원 관리</button>
-            <button class="admin-tab" data-atab="warn">경고</button>
-            <button class="admin-tab" data-atab="leave">휴가 <span id="leave-badge" class="mini-badge hidden">0</span></button>
-            <button class="admin-tab" data-atab="reports">보고서</button>
-            <button class="admin-tab" data-atab="post">공지/경고 작성</button>
-            <button class="admin-tab" data-atab="logs">활동 로그</button>
-            <button class="admin-tab" data-atab="settings">설정</button>
-          </div>
-        </div>
-
-        <!-- 승인 대기 -->
-        <div id="atab-pending" class="admin-pane">
-          <div id="admin-pending-list" class="admin-list"><p class="muted">대기중인 신청이 없습니다.</p></div>
-        </div>
-
-        <!-- 회원 관리 -->
-        <div id="atab-members" class="admin-pane hidden">
-          <div class="table-wrap">
-            <table class="admin-table">
-              <thead><tr><th>아이디</th><th>직급</th><th>팀</th><th>상태</th><th>경고</th><th>고번</th><th>관리</th></tr></thead>
-              <tbody id="admin-users-body"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- 경고 부여 + 전체 경고 -->
-        <div id="atab-warn" class="admin-pane hidden">
-          <div id="kick-review-box" class="kick-box hidden">
-            <div class="kick-box-head">🚨 강퇴 검토 대상 <span id="kick-count" class="mini-badge">0</span></div>
-            <ul id="kick-list" class="kick-list"></ul>
-          </div>
-          <form id="form-warn" class="warn-form">
-            <div class="warn-form-row">
-              <label class="report-field"><span class="rf-label">대상 회원</span>
-                <select id="warn-target"></select>
-              </label>
-              <label class="report-field"><span class="rf-label">경고 단계</span>
-                <select id="warn-level">
-                  <option value="1">1단계 (주의)</option>
-                  <option value="2">2단계 (경고)</option>
-                  <option value="3">3단계 (중대)</option>
-                </select>
-              </label>
-            </div>
-            <label class="report-field"><span class="rf-label">사유</span>
-              <textarea id="warn-reason" rows="3" placeholder="경고 사유를 입력하세요 (예: 무단 결근, 규정 위반)"></textarea>
-            </label>
-            <button type="submit" class="btn-warn-issue">⚠️ 경고 부여</button>
-            <p class="form-msg" id="warn-msg"></p>
-          </form>
-          <div class="warn-all">
-            <p class="warn-all-title">전체 경고 내역</p>
-            <ul id="admin-warn-list" class="warn-all-list"><li class="muted">발부된 경고가 없습니다.</li></ul>
-          </div>
-        </div>
-
-        <!-- 휴가 승인 -->
-        <div id="atab-leave" class="admin-pane hidden">
-          <ul id="admin-leave-list" class="admin-leave-list"><li class="muted">휴가 신청이 없습니다.</li></ul>
-        </div>
-
-        <!-- 보고서 (전체) -->
-        <div id="atab-reports" class="admin-pane hidden">
-          <div id="report-summary" class="report-summary"></div>
-          <div class="table-wrap">
-            <table class="admin-table report-table">
-              <thead><tr><th>작성자</th><th>종류</th><th>결과</th><th>점수</th><th>함께한 사람</th><th>내용</th><th>일시</th><th></th></tr></thead>
-              <tbody id="admin-reports-body"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- 공지/경고 작성 -->
-        <div id="atab-post" class="admin-pane hidden">
-          <form id="form-post" class="post-form">
-            <div class="seg">
-              <label class="seg-opt"><input type="radio" name="ptype" value="notice" checked /> <span>공지</span></label>
-              <label class="seg-opt warn"><input type="radio" name="ptype" value="warning" /> <span>경고 공지</span></label>
-            </div>
-            <label class="post-cat-label">카테고리
-              <select id="post-category"></select>
-            </label>
-            <input id="post-title" type="text" placeholder="제목" required />
-            <textarea id="post-body" rows="4" placeholder="내용"></textarea>
-            <button type="submit" class="btn-primary">게시하기</button>
-            <p class="form-msg" id="post-msg"></p>
-          </form>
-        </div>
-
-        <!-- 활동 로그 -->
-        <div id="atab-logs" class="admin-pane hidden">
-          <div class="log-head">
-            <p class="log-head-title">최근 활동 로그</p>
-            <button id="log-refresh" class="link-sm">새로고침</button>
-          </div>
-          <div id="log-filters" class="log-filters">
-            <button class="log-filter active" data-lf="all">전체</button>
-            <button class="log-filter" data-lf="auth">가입·승인</button>
-            <button class="log-filter" data-lf="warn">경고·강퇴</button>
-            <button class="log-filter" data-lf="report">보고서</button>
-            <button class="log-filter" data-lf="att">근태</button>
-            <button class="log-filter" data-lf="etc">기타</button>
-          </div>
-          <ul id="log-list" class="log-list"><li class="muted">활동 기록이 없습니다.</li></ul>
-        </div>
-
-        <!-- 설정 -->
-        <div id="atab-settings" class="admin-pane hidden">
-          <div class="settings-block">
-            <h4 class="settings-title">🔗 디스코드 연동</h4>
-            <p class="settings-desc">조직에 새 공지 · 경고 · 휴가 신청/처리 · 가입 신청이 생기면 디스코드 채널로 자동 알림이 전송됩니다.</p>
-            <ol class="settings-help">
-              <li>디스코드에서 알림 받을 <b>채널 → 편집(톱니) → 연동 → 웹후크</b></li>
-              <li><b>새 웹후크</b> 만들고 <b>웹후크 URL 복사</b></li>
-              <li>아래에 붙여넣고 <b>저장</b> → <b>테스트 전송</b>으로 확인</li>
-            </ol>
-            <label class="report-field"><span class="rf-label">웹훅 URL</span>
-              <input id="discord-webhook" type="text" placeholder="https://discord.com/api/webhooks/..." autocomplete="off" />
-            </label>
-            <div class="settings-actions">
-              <button id="discord-save" class="btn-primary">저장</button>
-              <button id="discord-test" class="btn-ghost">테스트 전송</button>
-              <span id="discord-status" class="settings-status"></span>
-            </div>
-          </div>
-
-          <div class="settings-block">
-            <h4 class="settings-title">🔑 디스코드 로그인 (OAuth)</h4>
-            <p class="settings-desc">디스코드 계정으로 로그인하고, 본인 디스코드를 계정에 연동할 수 있습니다. (역할 자동 동기화의 전제)</p>
-            <ol class="settings-help">
-              <li><a href="https://discord.com/developers/applications" target="_blank" rel="noopener">디스코드 개발자 포털</a> → <b>New Application</b></li>
-              <li><b>OAuth2</b> → Client ID / Client Secret 을 Render <b>Environment</b>에 <code>DISCORD_CLIENT_ID</code>, <code>DISCORD_CLIENT_SECRET</code>로 등록</li>
-              <li><b>OAuth2 → Redirects</b>에 아래 <b>Redirect URI</b>를 그대로 추가</li>
-            </ol>
-            <div class="settings-status-grid">
-              <div class="ss-item"><span>Client ID</span><b id="st-clientid">—</b></div>
-              <div class="ss-item"><span>Client Secret</span><b id="st-secret">—</b></div>
-              <div class="ss-item"><span>로그인 활성화</span><b id="st-login">—</b></div>
-            </div>
-            <label class="report-field"><span class="rf-label">등록할 Redirect URI</span>
-              <input id="discord-redirect" type="text" readonly onclick="this.select()" />
-            </label>
-          </div>
-
-          <div class="settings-block">
-            <h4 class="settings-title">🎖️ 역할 자동 동기화 (봇)</h4>
-            <p class="settings-desc">앱에서 직급이 바뀌면 디스코드 역할도 자동으로 변경됩니다. (봇 상시 연결 불필요 — REST 호출)</p>
-            <ol class="settings-help">
-              <li>개발자 포털 → <b>Bot</b> → 토큰을 Render <b>Environment</b>에 <code>DISCORD_BOT_TOKEN</code>으로 등록</li>
-              <li>봇을 서버에 초대(권한: <b>역할 관리</b>) 후, 서버 설정에서 <b>봇 역할을 관리할 역할들보다 위</b>로 올리기</li>
-              <li>아래 <b>서버 ID</b>와 <b>직급별 역할 ID</b>를 입력하고 저장 (디스코드 개발자 모드 켜고 우클릭 → ID 복사)</li>
-            </ol>
-            <div class="settings-status-grid">
-              <div class="ss-item"><span>봇 토큰</span><b id="st-bot">—</b></div>
-            </div>
-            <label class="report-field"><span class="rf-label">디스코드 서버(길드) ID</span>
-              <input id="discord-guild" type="text" placeholder="예) 123456789012345678" autocomplete="off" />
-            </label>
-            <div id="role-map-rows" class="role-map-rows"></div>
-            <div class="settings-actions">
-              <button id="discord-sync-save" class="btn-primary">서버·역할 저장</button>
-              <span id="discord-sync-status" class="settings-status"></span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-    </section>
-  </main>
-
-  <!-- 범용 모달 -->
-  <div id="modal" class="modal hidden">
-    <div class="modal-box">
-      <div class="modal-head"><h4 id="modal-title">제목</h4><button id="modal-close" class="modal-x">✕</button></div>
-      <div id="modal-body" class="modal-body"></div>
-    </div>
+  <div class="flashstate" id="flashState"><span class="off">손전등 꺼짐</span></div>
+  <canvas id="minimap" width="124" height="124"></canvas>
+  <div id="quickslots">
+    <div class="slot selected" data-slot="0"><span class="num">1</span>
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#cdbfae" stroke-width="1.4"><path d="M2 9l5-3v3l-5 3z"/><rect x="7" y="6.5" width="11" height="6" rx="1"/><path d="M18 7.5l3-1.5v6l-3-1.5"/></svg>
+      <span class="nm">손전등</span><div class="meter-mini"><i id="slotBat"></i></div></div>
+    <div class="slot" data-slot="1"><span class="num">2</span>
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#cdbfae" stroke-width="1.6"><path d="M12 2v20M6 8h12"/></svg>
+      <span class="nm">십자가</span><div class="cd hidden" id="slotCD"></div></div>
+    <div class="slot" data-slot="2"><span class="num">3</span>
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#cdbfae" stroke-width="1.4"><rect x="8" y="11" width="8" height="9" rx="1"/><path d="M12 11c0-3-3-3-1-6 1.5 2.5 3.5 2.5 1 6z" fill="#e0a23c" stroke="none"/></svg>
+      <span class="nm">라이터</span></div>
   </div>
+  <div id="prompt"></div>
+  <div id="toast"></div>
+  <div class="threat-arrow" id="threatArrow">▲</div>
+</div>
 
-  <!-- 토스트 -->
-  <div id="toast" class="toast-wrap"></div>
+<!-- 이펙트 -->
+<div id="vignette" class="hidden"></div>
+<div id="damage"></div>
+<canvas id="grain"></canvas>
+<div id="scare"><canvas id="scareCanvas" width="400" height="400"></canvas></div>
+<div id="deadOverlay"><div class="dt">당신은 쓰러졌다</div><div class="ds" id="deadSub">동료들이 아직 싸우고 있다…</div></div>
 
-  <script src="/js/app.js"></script>
+<!-- 1. 메인 화면 -->
+<div id="menu" class="screen">
+  <div class="title">병동</div>
+  <div class="subtitle">The Ward · 협동 공포</div>
+  <div class="story">
+    북부 종합병원, B동. 임상시험 <b>B-7</b>이 모든 것을 무너뜨렸다.<br>
+    정전과 함께 봉쇄문이 잠겼고, 그것들이 복도를 배회한다.<br>
+    <b>퓨즈 3개</b>로 전원을 복구해 탈출하라. 흩어진 기록이 진실을 말해줄 것이다.
+  </div>
+  <div class="field">
+    <label>당신의 이름</label>
+    <input class="txt" id="nameInput" maxlength="12" placeholder="생존자" autocomplete="off">
+  </div>
+  <div class="btnrow">
+    <button class="btn" id="btnCreate">방 만들기 (멀티)</button>
+    <button class="btn ghost" id="btnJoinView">초대 코드로 참가</button>
+    <button class="btn ghost" id="btnSolo">혼자 하기 (싱글)</button>
+  </div>
+  <div class="err" id="menuErr"></div>
+  <div class="hint">최대 5명까지 함께 플레이할 수 있습니다. 헤드폰을 권장합니다 — 소리가 단서입니다.</div>
+  <div class="mobilewarn" id="mobileWarn">⚠ 키보드·마우스가 있는 PC 환경에 최적화되어 있습니다.</div>
+</div>
+
+<!-- 2. 코드 입력 -->
+<div id="joinScreen" class="screen hidden">
+  <div class="title" style="font-size:clamp(40px,10vw,90px)">참가</div>
+  <div class="field" style="margin-top:34px">
+    <label>초대 코드</label>
+    <input class="txt code" id="codeInput" maxlength="5" placeholder="ABCDE" autocomplete="off">
+  </div>
+  <div class="btnrow">
+    <button class="btn" id="btnJoin">입장하기</button>
+    <button class="btn ghost" id="btnBack1">← 뒤로</button>
+  </div>
+  <div class="err" id="joinErr"></div>
+</div>
+
+<!-- 3. 대기실 -->
+<div id="lobbyScreen" class="screen hidden">
+  <div class="subtitle">초대 코드 · 친구에게 공유하세요</div>
+  <div class="roomcode" id="lobbyCode">-----</div>
+  <div class="codehint">이 코드를 입력하면 같은 방에 참가합니다</div>
+  <div class="players-list" id="lobbyPlayers"></div>
+  <div class="btnrow">
+    <button class="btn" id="btnStart">게임 시작</button>
+    <button class="btn ghost" id="btnLeave">← 나가기</button>
+  </div>
+  <div class="waiting" id="lobbyWait">방장이 시작하기를 기다리는 중…</div>
+</div>
+
+<!-- 4. 노트 모달 -->
+<div id="noteModal" class="hidden">
+  <div class="note-paper">
+    <div class="nt" id="noteTitle"></div>
+    <div class="nb" id="noteBody"></div>
+    <div class="nprog" id="noteProg"></div>
+    <div class="nclose">— <span class="k">E</span> 또는 클릭하여 덮기 —</div>
+  </div>
+</div>
+
+<!-- 5. 엔딩 -->
+<div id="endScreen" class="screen hidden">
+  <div class="endtitle" id="endTitle"></div>
+  <div class="endtext" id="endText"></div>
+  <div class="endstats" id="endStats"></div>
+  <div class="btnrow">
+    <button class="btn" id="btnAgain">다시 플레이</button>
+    <button class="btn ghost" id="btnMenu">메인으로</button>
+  </div>
+</div>
+
+<!-- 연결 대기 -->
+<div id="connScreen" class="screen hidden"><div class="waiting">서버에 연결하는 중…</div></div>
+
+<script>
+"use strict";
+/* =========================================================================
+   병동 클라이언트 — 레이캐스팅 + 멀티플레이 동기화 + 스토리
+   ========================================================================= */
+const $=id=>document.getElementById(id);
+const game=$('game'); const ctx=game.getContext('2d',{alpha:false});
+let RW=800, RH=500; const FOV=Math.PI/3;
+const MW=23, MH=23;
+const rand=(a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+function resize(){
+  const aspect=16/10; let w=window.innerWidth,h=window.innerHeight;
+  if(w/h>aspect) w=h*aspect; else h=w/aspect;
+  game.style.width=w+'px'; game.style.height=h+'px';
+  RW=800; RH=500; game.width=RW; game.height=RH;
+}
+window.addEventListener('resize',resize); resize();
+
+// ---------- 네트워크 ----------
+let ws=null, myId=null, isHost=false, roomCode='', soloMode=false;
+function connect(then){
+  const proto = location.protocol==='https:'?'wss:':'ws:';
+  ws=new WebSocket(proto+'//'+location.host);
+  ws.onopen=()=>{ then&&then(); };
+  ws.onmessage=ev=>{ let m; try{m=JSON.parse(ev.data);}catch(e){return;} onMsg(m); };
+  ws.onclose=()=>{ if(state==='playing'||state==='lobby'){ toast('서버 연결이 끊겼습니다'); } };
+  ws.onerror=()=>{};
+}
+function sendWS(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
+
+// ---------- 게임 상태 ----------
+let state='menu'; // menu | join | lobby | playing | dead | ended
+const player={ x:1.5,y:1.5,dir:0.3,dirX:1,dirY:0,planeX:0,planeY:0.66 };
+let pitch=0, yaw=0.3, pointerLocked=false, mouseXNorm=0, mouseYNorm=0;
+let equipped=0;
+let flashlight={on:false,battery:100,flickerT:0,intensity:1};
+let lighterFlickerT=0, lighterIntensity=1;
+let crossCooldown=0, crossActiveT=0;
+let stamina=100, running=false;
+let bpm=72, bpmDisplay=72, nearestThreat=Infinity;
+let footstepT=0, walkBob=0, scareCooldown=0, time=0, lastTs=0;
+let alive=true, escaped=false;
+
+let map=[], exitPos={x:0,y:0}, exitActive=false, fusesCollected=0;
+let fuses=[], batteries=[], notes=[];
+let remotePlayers=new Map(); // id -> {name,x,y,dx,dy,light,alive,escaped,cross, rx,ry}
+let enemies=[];              // {x,y,st, rx,ry}
+let playerNames=new Map();
+const keys={};
+const zBuffer=new Float32Array(RW);
+let netT=0;
+
+// ---------- 메시지 처리 ----------
+function onMsg(m){
+  switch(m.t){
+    case 'created': roomCode=m.code; myId=m.id; isHost=true; soloMode=!!m.solo;
+      if(m.solo){ /* start 곧 옴 */ } else showLobby(); break;
+    case 'joined': roomCode=m.code; myId=m.id; isHost=false; showLobby(); break;
+    case 'lobby': updateLobby(m); break;
+    case 'start': beginGame(m); break;
+    case 'snap': applySnap(m); break;
+    case 'event': onEvent(m); break;
+    case 'note': showNote(m); break;
+    case 'ended': showEnding(m); break;
+    case 'error': showError(m.msg); break;
+  }
+}
+function showError(msg){
+  if(state==='join') $('joinErr').textContent=msg;
+  else $('menuErr').textContent=msg;
+}
+
+// ---------- 로비 ----------
+function showLobby(){
+  state='lobby';
+  hideAllScreens(); $('lobbyScreen').classList.remove('hidden');
+  $('lobbyCode').textContent=roomCode;
+}
+function updateLobby(m){
+  roomCode=m.code; $('lobbyCode').textContent=roomCode;
+  isHost=(m.hostId===myId);
+  const wrap=$('lobbyPlayers'); wrap.innerHTML='';
+  m.players.forEach(p=>{
+    const d=document.createElement('div'); d.className='pl';
+    d.innerHTML=`<span class="dot"></span>${p.name}${p.host?'<span class="host">방장</span>':''}`;
+    wrap.appendChild(d);
+  });
+  $('btnStart').classList.toggle('hidden', !isHost);
+  $('lobbyWait').classList.toggle('hidden', isHost);
+  $('lobbyWait').textContent = m.players.length<2 ? '다른 생존자를 기다리는 중… (혼자 시작도 가능)' : '방장이 시작하기를 기다리는 중…';
+}
+
+// ---------- 게임 시작 ----------
+function beginGame(m){
+  map=m.map; exitPos=m.exitPos;
+  fuses=m.fuses.map(f=>({...f}));
+  batteries=m.batteries.map(b=>({...b}));
+  notes=m.notes.map(n=>({...n, read:false}));
+  myId=m.you.id;
+  player.x=m.you.x; player.y=m.you.y; yaw=0.3; pitch=0; setDir(yaw);
+  playerNames=new Map(); m.players.forEach(p=>playerNames.set(p.id,p.name));
+  remotePlayers=new Map(); enemies=[];
+  // 상태 초기화
+  equipped=0; flashlight={on:false,battery:100,flickerT:0,intensity:1};
+  stamina=100; bpm=72; bpmDisplay=72; crossCooldown=0; crossActiveT=0;
+  alive=true; escaped=false; fusesCollected=0; exitActive=false; time=0;
+  $('quickslots') && document.querySelectorAll('.slot').forEach((s,i)=>s.classList.toggle('selected',i===0));
+
+  state='playing';
+  hideAllScreens();
+  $('hud').classList.remove('hidden');
+  $('vignette').classList.remove('hidden');
+  $('deadOverlay').style.opacity='0';
+  initAudio(); if(AC&&AC.state==='suspended') AC.resume();
+  tryPointerLock();
+}
+
+// ---------- 스냅샷 적용 (보간 타겟) ----------
+function applySnap(m){
+  fusesCollected=m.fusesCollected; exitActive=m.exitActive;
+  // 적
+  for(let i=0;i<m.enemies.length;i++){
+    if(!enemies[i]) enemies[i]={x:m.enemies[i].x,y:m.enemies[i].y,rx:m.enemies[i].x,ry:m.enemies[i].y,st:m.enemies[i].st};
+    enemies[i].x=m.enemies[i].x; enemies[i].y=m.enemies[i].y; enemies[i].st=m.enemies[i].st;
+  }
+  enemies.length=m.enemies.length;
+  // 플레이어
+  const seen=new Set();
+  for(const p of m.players){
+    if(p.id===myId){ seen.add(p.id); continue; }
+    seen.add(p.id);
+    let r=remotePlayers.get(p.id);
+    if(!r){ r={rx:p.x,ry:p.y}; remotePlayers.set(p.id,r); }
+    Object.assign(r,{name:p.name,x:p.x,y:p.y,dx:p.dx,dy:p.dy,light:p.light,alive:p.alive,escaped:p.escaped,cross:p.cross});
+  }
+  for(const id of [...remotePlayers.keys()]) if(!seen.has(id)) remotePlayers.delete(id);
+}
+
+// ---------- 이벤트 ----------
+function onEvent(m){
+  switch(m.kind){
+    case 'fuse': toast(`${m.by||'누군가'}가 퓨즈를 회수했다  (${m.count} / 3)`); powerSound(); break;
+    case 'power': toast('비상 전원 복구 — 봉쇄문이 열렸다. 탈출하라!'); powerSound(); break;
+    case 'battery': flashlight.battery=clamp(flashlight.battery+40,0,100); pickupSound(); toast('배터리 +40%'); break;
+    case 'batteryTaken': { const b=batteries.find(b=>b.id===m.id); if(b) b.taken=true; break; }
+    case 'cross': crossActiveT=2.6; crossCooldown=8; crossSound(); toast(m.hit>0?'십자가가 그것을 밀어냈다':'십자가를 들어올렸다…'); break;
+    case 'death': onLocalDeath(); break;
+    case 'playerDown': if(m.id!==myId) toast(`${m.name} 님이 쓰러졌다`); break;
+    case 'escaped': toast(`${m.name} 님이 탈출했다`); if(m.id===myId) onLocalEscape(); break;
+  }
+  // 퓨즈 taken 동기화 (혹시)
+  if(m.kind==='fuse'){ /* taken은 서버 snap엔 없으니 직접 못 맞춤; pickup 응답이 처리 */ }
+}
+function onLocalDeath(){
+  if(!alive) return;
+  alive=false; triggerScare();
+  setTimeout(()=>{ document.exitPointerLock(); $('deadOverlay').style.opacity='1'; }, 600);
+}
+function onLocalEscape(){
+  escaped=true; alive=false;
+  document.exitPointerLock();
+  $('deadOverlay').querySelector('.dt').textContent='탈출했다';
+  $('deadOverlay').querySelector('.dt').style.color='#9fb59a';
+  $('deadSub').textContent='동료들의 생존을 기다리는 중…';
+  $('deadOverlay').style.opacity='1';
+}
+
+// ---------- 입력 ----------
+window.addEventListener('keydown',e=>{
+  const first=!e.repeat; keys[e.code]=true;
+  if(state==='playing'&&alive){
+    if(first&&e.code==='KeyF'){ selectSlot(0); toggleFlash(); }
+    if(first&&e.code==='KeyE') interact();
+    if(first&&e.code==='Digit1') selectSlot(0);
+    if(first&&e.code==='Digit2') selectSlot(1);
+    if(first&&e.code==='Digit3') selectSlot(2);
+    if(first&&e.code==='Space') useEquipped();
+    if(['KeyW','KeyA','KeyS','KeyD','Space','ShiftLeft','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.code)) e.preventDefault();
+  }
+  if($('noteModal') && !$('noteModal').classList.contains('hidden') && e.code==='KeyE') closeNote();
+});
+window.addEventListener('keyup',e=>{ keys[e.code]=false; });
+
+document.addEventListener('mousemove',e=>{
+  if(state!=='playing') return;
+  if(pointerLocked){
+    yaw+=e.movementX*0.0024;
+    pitch=clamp(pitch-e.movementY*1.4,-RH*0.34,RH*0.34);
+    setDir(yaw);
+  } else {
+    const r=game.getBoundingClientRect();
+    if(r.width>0){ mouseXNorm=clamp(((e.clientX-r.left)/r.width-0.5)*2,-1,1); mouseYNorm=clamp(((e.clientY-r.top)/r.height-0.5)*2,-1,1); }
+  }
+});
+function setDir(a){ player.dir=a; player.dirX=Math.cos(a); player.dirY=Math.sin(a);
+  player.planeX=-Math.sin(a)*0.66; player.planeY=Math.cos(a)*0.66; }
+function tryPointerLock(){
+  try{ const p=game.requestPointerLock(); if(p&&p.catch)p.catch(()=>{}); }catch(e){}
+  setTimeout(()=>{ if(state==='playing'&&!pointerLocked&&alive) toast('마우스를 화면 가장자리로 움직여 둘러보세요 · ←→↑↓ 키 가능'); }, 400);
+}
+document.addEventListener('pointerlockchange',()=>{ pointerLocked=(document.pointerLockElement===game); });
+game.addEventListener('mousedown',e=>{
+  if(state!=='playing'||!alive||e.button!==0) return;
+  if(!pointerLocked) tryPointerLock();
+  useEquipped();
+});
+
+// ---------- 퀵슬롯 ----------
+function selectSlot(i){ if(equipped===i)return; equipped=i;
+  document.querySelectorAll('.slot').forEach((s,idx)=>s.classList.toggle('selected',idx===i)); clickSound(false); }
+function useEquipped(){ if(state!=='playing'||!alive)return;
+  if(equipped===0) toggleFlash(); else if(equipped===1) sendWS({t:'cross'}); }
+function toggleFlash(){ if(flashlight.battery<=0&&!flashlight.on){clickSound(false);return;}
+  flashlight.on=!flashlight.on; clickSound(flashlight.on); }
+
+// ---------- 상호작용 (서버 요청) ----------
+function interact(){
+  for(const f of fuses) if(!f.taken && Math.hypot(f.x-player.x,f.y-player.y)<0.85){ sendWS({t:'pickup',kind:'fuse',id:f.id}); f.taken=true; return; }
+  for(const b of batteries) if(!b.taken && Math.hypot(b.x-player.x,b.y-player.y)<0.85){ sendWS({t:'pickup',kind:'battery',id:b.id}); return; }
+  for(const n of notes) if(Math.hypot(n.x-player.x,n.y-player.y)<0.9){ sendWS({t:'note',id:n.id}); n.read=true; return; }
+  if(exitActive && Math.hypot((exitPos.x+0.5)-player.x,(exitPos.y+0.5)-player.y)<1.0){ sendWS({t:'exit'}); }
+}
+
+// ---------- 노트 모달 ----------
+let noteOpen=false;
+function showNote(m){
+  noteOpen=true; document.exitPointerLock();
+  $('noteTitle').textContent=m.title;
+  $('noteBody').textContent=m.body;
+  $('noteProg').textContent=`기록 ${m.read} / ${m.total} 발견`;
+  $('noteModal').classList.remove('hidden');
+}
+function closeNote(){ noteOpen=false; $('noteModal').classList.add('hidden');
+  if(state==='playing'&&alive) tryPointerLock(); }
+$('noteModal').addEventListener('click',closeNote);
+
+// =========================================================================
+//  사운드 엔진 (절차적)
+// =========================================================================
+let AC=null,masterGain=null,heartTimer=0;
+function initAudio(){ if(AC)return;
+  try{ AC=new (window.AudioContext||window.webkitAudioContext)(); masterGain=AC.createGain();
+    masterGain.gain.value=0; masterGain.connect(AC.destination); startAmbient();
+    masterGain.gain.setTargetAtTime(0.9,AC.currentTime,1.5);
+  }catch(e){}
+}
+function noiseBuffer(d){ const len=AC.sampleRate*d; const b=AC.createBuffer(1,len,AC.sampleRate);
+  const a=b.getChannelData(0); for(let i=0;i<len;i++)a[i]=Math.random()*2-1; return b; }
+function startAmbient(){
+  const dr=AC.createOscillator(); dr.type='sine'; dr.frequency.value=42;
+  const dg=AC.createGain(); dg.gain.value=0.10;
+  const lfo=AC.createOscillator(); lfo.frequency.value=0.07; const lg=AC.createGain(); lg.gain.value=0.05;
+  lfo.connect(lg); lg.connect(dg.gain); dr.connect(dg); dg.connect(masterGain); dr.start(); lfo.start();
+  const dr2=AC.createOscillator(); dr2.type='sine'; dr2.frequency.value=57; const dg2=AC.createGain(); dg2.gain.value=0.045;
+  dr2.connect(dg2); dg2.connect(masterGain); dr2.start();
+  const wind=AC.createBufferSource(); wind.buffer=noiseBuffer(4); wind.loop=true;
+  const wf=AC.createBiquadFilter(); wf.type='lowpass'; wf.frequency.value=320; wf.Q.value=2;
+  const wg=AC.createGain(); wg.gain.value=0.025; wind.connect(wf); wf.connect(wg); wg.connect(masterGain); wind.start();
+  scheduleCreak();
+}
+function scheduleCreak(){ if(!AC||state!=='playing'){ setTimeout(scheduleCreak,4000); return; }
+  setTimeout(()=>{ if(state==='playing') Math.random()<0.5?creak():drip(); scheduleCreak(); }, rand(6,16)*1000); }
+function creak(){ const t=AC.currentTime; const o=AC.createOscillator(); o.type='sawtooth';
+  o.frequency.setValueAtTime(rand(90,160),t); o.frequency.exponentialRampToValueAtTime(rand(40,70),t+rand(0.4,0.9));
+  const f=AC.createBiquadFilter(); f.type='bandpass'; f.frequency.value=400; f.Q.value=6;
+  const g=AC.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.06,t+0.1); g.gain.exponentialRampToValueAtTime(0.0008,t+1.1);
+  o.connect(f); f.connect(g); g.connect(masterGain); o.start(t); o.stop(t+1.2); }
+function drip(){ const t=AC.currentTime; const o=AC.createOscillator(); o.type='sine';
+  o.frequency.setValueAtTime(900,t); o.frequency.exponentialRampToValueAtTime(300,t+0.08);
+  const g=AC.createGain(); g.gain.setValueAtTime(0.07,t); g.gain.exponentialRampToValueAtTime(0.0005,t+0.18);
+  o.connect(g); g.connect(masterGain); o.start(t); o.stop(t+0.2); }
+function heartbeat(){ if(!AC)return; const t=AC.currentTime; const inten=clamp((bpm-70)/90,0.12,1);
+  const beat=(off,amp)=>{ const o=AC.createOscillator(); o.type='sine';
+    o.frequency.setValueAtTime(70,t+off); o.frequency.exponentialRampToValueAtTime(38,t+off+0.12);
+    const g=AC.createGain(); g.gain.setValueAtTime(0,t+off); g.gain.linearRampToValueAtTime(amp*inten,t+off+0.02); g.gain.exponentialRampToValueAtTime(0.0005,t+off+0.18);
+    o.connect(g); g.connect(masterGain); o.start(t+off); o.stop(t+off+0.2); };
+  beat(0,0.5); beat(0.16,0.36); }
+function footstep(){ if(!AC)return; const t=AC.currentTime; const s=AC.createBufferSource(); s.buffer=noiseBuffer(0.12);
+  const f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=rand(230,330);
+  const g=AC.createGain(); g.gain.setValueAtTime(running?0.10:0.05,t); g.gain.exponentialRampToValueAtTime(0.0005,t+0.1);
+  s.connect(f); f.connect(g); g.connect(masterGain); s.start(t); s.stop(t+0.12); }
+function clickSound(on){ if(!AC)return; const t=AC.currentTime; const o=AC.createOscillator(); o.type='square';
+  o.frequency.setValueAtTime(on?1400:900,t); o.frequency.exponentialRampToValueAtTime(on?600:400,t+0.03);
+  const g=AC.createGain(); g.gain.setValueAtTime(0.05,t); g.gain.exponentialRampToValueAtTime(0.0005,t+0.05);
+  o.connect(g); g.connect(masterGain); o.start(t); o.stop(t+0.06); }
+function pickupSound(){ if(!AC)return; const t=AC.currentTime; [660,990].forEach((fr,i)=>{ const o=AC.createOscillator(); o.type='triangle'; o.frequency.value=fr;
+  const g=AC.createGain(); g.gain.setValueAtTime(0,t+i*0.08); g.gain.linearRampToValueAtTime(0.08,t+i*0.08+0.02); g.gain.exponentialRampToValueAtTime(0.0005,t+i*0.08+0.25);
+  o.connect(g); g.connect(masterGain); o.start(t+i*0.08); o.stop(t+i*0.08+0.3); }); }
+function powerSound(){ if(!AC)return; const t=AC.currentTime; const o=AC.createOscillator(); o.type='sawtooth';
+  o.frequency.setValueAtTime(120,t); o.frequency.linearRampToValueAtTime(180,t+0.5);
+  const f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=600;
+  const g=AC.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.12,t+0.1); g.gain.exponentialRampToValueAtTime(0.0005,t+0.7);
+  o.connect(f); f.connect(g); g.connect(masterGain); o.start(t); o.stop(t+0.8); }
+function crossSound(){ if(!AC)return; const t=AC.currentTime; [392,523,659].forEach(fr=>{ const o=AC.createOscillator(); o.type='sine'; o.frequency.value=fr;
+  const g=AC.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.05,t+0.06); g.gain.exponentialRampToValueAtTime(0.0005,t+1.9);
+  o.connect(g); g.connect(masterGain); o.start(t); o.stop(t+2); });
+  const o2=AC.createOscillator(); o2.type='triangle'; o2.frequency.value=1568; const g2=AC.createGain(); g2.gain.setValueAtTime(0.03,t); g2.gain.exponentialRampToValueAtTime(0.0005,t+0.8);
+  o2.connect(g2); g2.connect(masterGain); o2.start(t); o2.stop(t+0.85); }
+function enemyGrowl(panX,vol){ if(!AC)return; const t=AC.currentTime; const o=AC.createOscillator(); o.type='sawtooth';
+  o.frequency.setValueAtTime(rand(55,80),t); o.frequency.linearRampToValueAtTime(rand(90,120),t+0.6);
+  const f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=400; f.Q.value=3;
+  const g=AC.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+0.2); g.gain.exponentialRampToValueAtTime(0.0008,t+0.9);
+  const pan=AC.createStereoPanner?AC.createStereoPanner():null;
+  o.connect(f); f.connect(g); if(pan){pan.pan.value=clamp(panX,-1,1); g.connect(pan); pan.connect(masterGain);} else g.connect(masterGain);
+  o.start(t); o.stop(t+1); }
+function scareSound(){ if(!AC)return; const t=AC.currentTime; [220,233,466,880].forEach(fr=>{ const o=AC.createOscillator(); o.type='sawtooth'; o.frequency.value=fr*rand(0.99,1.01);
+  const g=AC.createGain(); g.gain.setValueAtTime(0.18,t); g.gain.exponentialRampToValueAtTime(0.001,t+1.4); o.connect(g); g.connect(masterGain); o.start(t); o.stop(t+1.4); });
+  const s=AC.createBufferSource(); s.buffer=noiseBuffer(0.5); const f=AC.createBiquadFilter(); f.type='highpass'; f.frequency.value=2000;
+  const g=AC.createGain(); g.gain.setValueAtTime(0.25,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.4); s.connect(f); f.connect(g); g.connect(masterGain); s.start(t); s.stop(t+0.5); }
+
+// 적 그르렁 트리거 (클라, 거리 기반)
+let growlTimers=[];
+function updateGrowls(dt){
+  for(let i=0;i<enemies.length;i++){
+    if(growlTimers[i]===undefined) growlTimers[i]=rand(2,5);
+    const e=enemies[i]; const d=Math.hypot(e.rx-player.x,e.ry-player.y);
+    growlTimers[i]-=dt;
+    if(growlTimers[i]<=0 && d<11){
+      const ang=Math.atan2(e.ry-player.y,e.rx-player.x)-player.dir;
+      enemyGrowl(Math.sin(ang), clamp(0.5*(1-d/11),0.03,0.5));
+      growlTimers[i]=e.st==='chase'?rand(1.2,2.5):rand(3,6);
+    }
+  }
+}
+
+// =========================================================================
+//  플레이어 업데이트 (클라 권위 이동) + 서버 전송
+// =========================================================================
+function isWall(x,y){ const mx=Math.floor(x),my=Math.floor(y);
+  if(mx<0||mx>=MW||my<0||my>=MH) return true; return map[my][mx]!==0; }
+function tryMove(nx,ny){ const r=0.22;
+  if(!isWall(nx+Math.sign(nx-player.x)*r,player.y)) player.x=nx;
+  if(!isWall(player.x,ny+Math.sign(ny-player.y)*r)) player.y=ny; }
+
+function updatePlayer(dt){
+  const maxPitch=RH*0.34;
+  if(!pointerLocked){
+    const dead=0.10,m=mouseXNorm;
+    if(Math.abs(m)>dead){ const mag=(Math.abs(m)-dead)/(1-dead); yaw+=Math.sign(m)*mag*mag*2.6*dt; setDir(yaw); }
+    pitch=lerp(pitch,-mouseYNorm*maxPitch,dt*7);
+  }
+  if(keys['ArrowLeft']){ yaw-=1.9*dt; setDir(yaw); }
+  if(keys['ArrowRight']){ yaw+=1.9*dt; setDir(yaw); }
+  if(keys['ArrowUp']) pitch=clamp(pitch+280*dt,-maxPitch,maxPitch);
+  if(keys['ArrowDown']) pitch=clamp(pitch-280*dt,-maxPitch,maxPitch);
+
+  let mvF=0,mvS=0;
+  if(keys['KeyW'])mvF+=1; if(keys['KeyS'])mvF-=1; if(keys['KeyD'])mvS+=1; if(keys['KeyA'])mvS-=1;
+  running=keys['ShiftLeft']&&stamina>2&&(mvF!==0||mvS!==0);
+  const speed=running?2.9:1.7;
+  if(running) stamina=clamp(stamina-dt*22,0,100); else stamina=clamp(stamina+dt*11,0,100);
+  const mag=Math.hypot(mvF,mvS);
+  if(mag>0){ mvF/=mag; mvS/=mag;
+    const vx=(player.dirX*mvF+(-player.dirY)*mvS)*speed*dt;
+    const vy=(player.dirY*mvF+(player.dirX)*mvS)*speed*dt;
+    tryMove(player.x+vx,player.y+vy);
+    footstepT-=dt*(running?2.6:1.7); if(footstepT<=0){ footstep(); footstepT=1; }
+    walkBob+=dt*(running?14:9);
+  } else walkBob=lerp(walkBob,0,dt*8);
+
+  // 손전등
+  if(equipped===0&&flashlight.on){
+    flashlight.battery=clamp(flashlight.battery-dt*2.4,0,100);
+    if(flashlight.battery<=0){ flashlight.on=false; clickSound(false); toast('배터리가 다 됐다…'); }
+    flashlight.flickerT-=dt; const lf=flashlight.battery<25?1:0.15;
+    if(flashlight.flickerT<=0){ flashlight.intensity=(Math.random()<0.12*lf)?rand(0.25,0.6):1; flashlight.flickerT=rand(0.04,0.18); }
+  } else flashlight.intensity=lerp(flashlight.intensity,0,dt*10);
+  if(equipped===2){ lighterFlickerT-=dt; if(lighterFlickerT<=0){ lighterIntensity=rand(0.6,1); lighterFlickerT=rand(0.05,0.16); } }
+  crossCooldown=Math.max(0,crossCooldown-dt); crossActiveT=Math.max(0,crossActiveT-dt);
+
+  // 서버 전송 (15Hz)
+  netT-=dt;
+  if(netT<=0){ const light=(equipped===0&&flashlight.on&&flashlight.battery>0)?2:(equipped===2?1:0);
+    sendWS({t:'input',x:player.x,y:player.y,dx:player.dirX,dy:player.dirY,light,running,pitch}); netT=1/15; }
+}
+
+// 위협 거리 / 심박 (클라, 적 위치 기반)
+function updateThreat(dt){
+  nearestThreat=Infinity; let chasing=false;
+  for(const e of enemies){ const d=Math.hypot(e.rx-player.x,e.ry-player.y); nearestThreat=Math.min(nearestThreat,d); if(e.st==='chase')chasing=true; }
+  let target=72;
+  if(nearestThreat<11) target=lerp(150,72,clamp(nearestThreat/11,0,1));
+  if(nearestThreat<3) target=165;
+  if(chasing) target=Math.max(target,140);
+  bpm=lerp(bpm,target,dt*1.5);
+  heartTimer-=dt; if(heartTimer<=0){ heartbeat(); heartTimer=60/bpm; }
+  // 점프스케어 (적 매우 가까이 정면)
+  scareCooldown=Math.max(0,scareCooldown-dt);
+  if(alive){
+    for(const e of enemies){ const d=Math.hypot(e.rx-player.x,e.ry-player.y);
+      if(d<1.7 && scareCooldown<=0){
+        let rel=Math.atan2(e.ry-player.y,e.rx-player.x)-player.dir;
+        while(rel>Math.PI)rel-=2*Math.PI; while(rel<-Math.PI)rel+=2*Math.PI;
+        if(Math.abs(rel)<FOV*0.55){ triggerScare(); scareCooldown=6; }
+      }
+    }
+  }
+}
+
+// =========================================================================
+//  점프스케어 연출
+// =========================================================================
+function triggerScare(){ scareSound(); drawScareFace();
+  const s=$('scare'); s.style.transition='none'; s.style.opacity='0.92';
+  setTimeout(()=>{ s.style.transition='opacity .6s'; s.style.opacity='0'; },220); }
+function drawScareFace(){ const c=$('scareCanvas'); const x=c.getContext('2d');
+  x.fillStyle='#000'; x.fillRect(0,0,400,400);
+  const g=x.createRadialGradient(200,200,30,200,210,210);
+  g.addColorStop(0,'#cdbfae'); g.addColorStop(0.6,'#7a6f5f'); g.addColorStop(1,'#1a1614');
+  x.fillStyle=g; x.beginPath(); x.ellipse(200,210,130,175,0,0,7); x.fill();
+  x.fillStyle='#000'; x.beginPath(); x.ellipse(150,180,30,42,0.2,0,7); x.fill(); x.beginPath(); x.ellipse(255,180,30,42,-0.2,0,7); x.fill();
+  x.fillStyle='#d11e22'; x.shadowColor='#d11e22'; x.shadowBlur=20; x.beginPath(); x.arc(152,188,6,0,7); x.fill(); x.beginPath(); x.arc(253,188,6,0,7); x.fill(); x.shadowBlur=0;
+  x.fillStyle='#000'; x.beginPath(); x.ellipse(200,300,46,62,0,0,7); x.fill();
+  x.strokeStyle='#3a1a1a'; x.lineWidth=3; for(let i=-3;i<=3;i++){ x.beginPath(); x.moveTo(200+i*13,255); x.lineTo(200+i*11,345); x.stroke(); }
+  x.strokeStyle='rgba(138,15,18,.5)'; x.lineWidth=1; for(let i=0;i<24;i++){ x.beginPath(); const sx=rand(120,280),sy=rand(120,300); x.moveTo(sx,sy); x.lineTo(sx+rand(-20,20),sy+rand(-20,20)); x.stroke(); } }
+
+// =========================================================================
+//  렌더링
+// =========================================================================
+function render(){
+  const flashOn=(equipped===0&&flashlight.on&&flashlight.battery>0);
+  const lighterOn=(equipped===2);
+  const horizon=clamp(RH/2+pitch+Math.sin(walkBob)*6,RH*0.12,RH*0.88);
+
+  const ceil=ctx.createLinearGradient(0,0,0,horizon); ceil.addColorStop(0,'#15151a'); ceil.addColorStop(1,'#08080b');
+  ctx.fillStyle=ceil; ctx.fillRect(0,0,RW,horizon);
+  const fl=ctx.createLinearGradient(0,horizon,0,RH); fl.addColorStop(0,'#08080a'); fl.addColorStop(1,'#1b1813');
+  ctx.fillStyle=fl; ctx.fillRect(0,horizon,RW,RH-horizon);
+
+  for(let col=0;col<RW;col++){
+    const cameraX=2*col/RW-1; const rayX=player.dirX+player.planeX*cameraX, rayY=player.dirY+player.planeY*cameraX;
+    let mapX=Math.floor(player.x),mapY=Math.floor(player.y);
+    const ddx=Math.abs(1/rayX),ddy=Math.abs(1/rayY); let sx,sy,sdx,sdy;
+    if(rayX<0){sx=-1;sdx=(player.x-mapX)*ddx;}else{sx=1;sdx=(mapX+1-player.x)*ddx;}
+    if(rayY<0){sy=-1;sdy=(player.y-mapY)*ddy;}else{sy=1;sdy=(mapY+1-player.y)*ddy;}
+    let hit=0,side=0,guard=0;
+    while(hit===0&&guard++<64){ if(sdx<sdy){sdx+=ddx;mapX+=sx;side=0;}else{sdy+=ddy;mapY+=sy;side=1;}
+      if(mapX<0||mapX>=MW||mapY<0||mapY>=MH){hit=2;break;} if(map[mapY][mapX]!==0)hit=1; }
+    let perp=side===0?(sdx-ddx):(sdy-ddy); if(perp<0.05)perp=0.05; zBuffer[col]=perp;
+    const lineH=Math.floor(RH/perp); const dy0=Math.max(0,Math.floor(horizon-lineH/2)),dy1=Math.min(RH,Math.floor(horizon+lineH/2));
+    const angCos=(player.dirX*rayX+player.dirY*rayY)/Math.hypot(rayX,rayY); const beam=Math.pow(clamp(angCos,0,1),6);
+    let light;
+    if(flashOn){ const dF=clamp(1-perp/14,0,1); light=(0.30+0.82*beam*dF)*flashlight.intensity; light+=clamp(1-perp/3.5,0,1)*0.12; }
+    else if(lighterOn){ const dF=clamp(1-perp/6,0,1); light=(0.28+0.45*beam*dF)*lighterIntensity; light+=clamp(1-perp/2.5,0,1)*0.10; }
+    else light=0.24+clamp(1-perp/6,0,1)*0.22;
+    light=clamp(light,0,1); if(side===1)light*=0.72;
+    let r=120,g=124,b=116; const bh=((mapX*31+mapY*17)%97); if(bh<6){ r=135; g*=0.5; b*=0.5; }
+    r*=light; g*=light; b*=light; ctx.fillStyle=`rgb(${r|0},${g|0},${b|0})`; ctx.fillRect(col,dy0,1,dy1-dy0);
+    if((flashOn||lighterOn)&&beam>0.05){ const fL=beam*(flashOn?flashlight.intensity:lighterIntensity)*(flashOn?0.5:0.3);
+      if(fL>0.02){ ctx.fillStyle=`rgba(${flashOn?'120,110,80':'150,90,40'},${fL*0.25})`; ctx.fillRect(col,dy1,1,RH-dy1); } }
+  }
+
+  // 스프라이트 수집: 아이템 + 노트 + 적 + 다른 플레이어
+  const sprites=[];
+  for(const f of fuses) if(!f.taken) sprites.push({x:f.x,y:f.y,type:'fuse',obj:f});
+  for(const b of batteries) if(!b.taken) sprites.push({x:b.x,y:b.y,type:'battery',obj:b});
+  for(const n of notes) sprites.push({x:n.x,y:n.y,type:'note',obj:n});
+  if(exitActive) sprites.push({x:exitPos.x+0.5,y:exitPos.y+0.5,type:'exit'});
+  for(const e of enemies) sprites.push({x:e.rx,y:e.ry,type:'enemy',obj:e});
+  for(const r of remotePlayers.values()) if(r.alive&&!r.escaped) sprites.push({x:r.rx,y:r.ry,type:'ally',obj:r});
+
+  for(const s of sprites){ s.dist=(s.x-player.x)**2+(s.y-player.y)**2; }
+  sprites.sort((a,b)=>b.dist-a.dist);
+  const invDet=1/(player.planeX*player.dirY-player.dirX*player.planeY);
+  for(const s of sprites){
+    const dx=s.x-player.x,dy=s.y-player.y;
+    const tX=invDet*(player.dirY*dx-player.dirX*dy), tY=invDet*(-player.planeY*dx+player.planeX*dy);
+    if(tY<=0.2) continue;
+    const screenX=Math.floor((RW/2)*(1+tX/tY)); const size=Math.abs(Math.floor(RH/tY));
+    drawSprite(s,screenX,size,tY,horizon,flashOn,lighterOn);
+  }
+
+  // 손전등/라이터 콘
+  if(flashOn||lighterOn){ const rg=ctx.createRadialGradient(RW/2,horizon,10,RW/2,horizon,RW*(flashOn?0.5:0.32)); const a=flashOn?flashlight.intensity:lighterIntensity;
+    if(flashOn){ rg.addColorStop(0,`rgba(255,240,200,${0.10*a})`); rg.addColorStop(0.4,`rgba(255,230,180,${0.04*a})`); }
+    else { rg.addColorStop(0,`rgba(255,170,80,${0.12*a})`); rg.addColorStop(0.5,`rgba(255,140,50,${0.05*a})`); }
+    rg.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=rg; ctx.fillRect(0,0,RW,RH); }
+
+  // 비네팅
+  const vg=ctx.createRadialGradient(RW/2,RH/2,RH*0.22,RW/2,RH/2,RH*0.78); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.55)');
+  ctx.fillStyle=vg; ctx.fillRect(0,0,RW,RH);
+
+  if(alive) drawViewModel();
+}
+
+function drawSprite(s,screenX,size,depth,horizon,flashOn,lighterOn){
+  const groundY=horizon+size/2;
+  if(s.type==='enemy'){
+    const dR=Math.sqrt(s.dist);
+    let vis=flashOn?clamp(1-dR/12,0,1)*flashlight.intensity:lighterOn?clamp(1-dR/6,0,1)*lighterIntensity*0.9:clamp(1-dR/5.5,0,1)*0.35+0.1;
+    const cen=clamp(1-Math.abs(screenX-RW/2)/(RW*0.5),0,1); if(flashOn) vis*=lerp(0.45,1,cen); vis=clamp(vis,0,1);
+    const w=size*0.42,h=size*1.02,x0=screenX-w/2,y0=groundY-h;
+    const c0=Math.max(0,Math.floor(x0)),c1=Math.min(RW-1,Math.floor(x0+w));
+    ctx.save(); ctx.globalAlpha=clamp(vis+0.15,0,1);
+    for(let cx=c0;cx<=c1;cx++){ if(depth>=zBuffer[cx])continue; const t=(cx-x0)/w; if(0.5-Math.abs(t-0.5)<0.04)continue;
+      const sh=vis; ctx.fillStyle=`rgb(${(26+sh*70)|0},${(24+sh*60)|0},${(28+sh*72)|0})`;
+      ctx.fillRect(cx,y0+Math.sin(time*4+cx*0.1)*size*0.01,1,h); }
+    const ec=Math.floor(screenX);
+    if(ec>=0&&ec<RW&&depth<zBuffer[ec]){ const ey=y0+h*0.18; ctx.globalAlpha=clamp(vis+0.3,0,1);
+      ctx.fillStyle='#d11e22'; ctx.shadowColor='#d11e22'; ctx.shadowBlur=12*vis; const er=Math.max(1,size*0.018);
+      ctx.beginPath(); ctx.arc(screenX-size*0.07,ey,er,0,7); ctx.fill(); ctx.beginPath(); ctx.arc(screenX+size*0.07,ey,er,0,7); ctx.fill(); ctx.shadowBlur=0; }
+    ctx.restore(); return;
+  }
+  if(s.type==='ally'){
+    // 동료: 잘 보이게 (푸른 형체 + 이름 + 손전등 켰으면 빛)
+    const r=s.obj; const dR=Math.sqrt(s.dist);
+    const w=size*0.4,h=size*1.0,x0=screenX-w/2,y0=groundY-h;
+    const c0=Math.max(0,Math.floor(x0)),c1=Math.min(RW-1,Math.floor(x0+w));
+    const vis=clamp(1-dR/16,0.25,1);
+    ctx.save(); ctx.globalAlpha=vis;
+    for(let cx=c0;cx<=c1;cx++){ if(depth>=zBuffer[cx])continue; const t=(cx-x0)/w; if(0.5-Math.abs(t-0.5)<0.05)continue;
+      ctx.fillStyle=`rgb(${(40+vis*40)|0},${(80+vis*70)|0},${(110+vis*90)|0})`; ctx.fillRect(cx,y0,1,h); }
+    // 손전등 켰으면 머리쪽 빛
+    if(r.light===2 || r.light===1){ const ec=Math.floor(screenX);
+      if(ec>=0&&ec<RW&&depth<zBuffer[ec]){ ctx.globalAlpha=vis*0.6; ctx.fillStyle=r.light===2?'#fff0c8':'#ffb060';
+        ctx.shadowColor=r.light===2?'#fff0c8':'#ffb060'; ctx.shadowBlur=size*0.1;
+        ctx.beginPath(); ctx.arc(screenX,y0+h*0.12,Math.max(2,size*0.03),0,7); ctx.fill(); ctx.shadowBlur=0; } }
+    // 십자가 빛
+    if(r.cross){ ctx.globalAlpha=vis; ctx.fillStyle='#bcdfff'; ctx.shadowColor='#bcdfff'; ctx.shadowBlur=size*0.12;
+      ctx.fillRect(screenX-size*0.02,y0+h*0.3,size*0.04,h*0.4); ctx.shadowBlur=0; }
+    // 이름표
+    const ec2=Math.floor(screenX);
+    if(ec2>=0&&ec2<RW&&depth<zBuffer[ec2] && size>40){
+      ctx.globalAlpha=clamp(vis+0.3,0,1); ctx.fillStyle='#cfe3f0'; ctx.font=`${Math.max(10,Math.floor(size*0.09))}px Georgia`;
+      ctx.textAlign='center'; ctx.shadowColor='#000'; ctx.shadowBlur=4; ctx.fillText(r.name||'동료',screenX,y0-size*0.04); ctx.shadowBlur=0; }
+    ctx.restore(); return;
+  }
+  // 아이템/노트/출구
+  const bob=Math.sin(time*2+(s.obj?(s.obj.id||0):0))*size*0.04;
+  const cx=screenX,cy=horizon+size*0.18+bob; const col=Math.floor(cx);
+  if(col<0||col>=RW||depth>=zBuffer[col]) return;
+  ctx.save();
+  if(s.type==='fuse'){ const r=size*0.07; ctx.shadowColor='#ff6a2a'; ctx.shadowBlur=size*0.12; ctx.fillStyle='#ffb070';
+    ctx.fillRect(cx-r,cy-r*1.4,r*2,r*2.8); ctx.fillStyle='#5a3010'; ctx.fillRect(cx-r*0.3,cy-r*1.4,r*0.6,r*2.8); }
+  else if(s.type==='battery'){ const r=size*0.055; ctx.shadowColor='#6fc0cf'; ctx.shadowBlur=size*0.1; ctx.fillStyle='#bfe9f0';
+    ctx.fillRect(cx-r,cy-r*1.6,r*2,r*3.2); ctx.fillStyle='#2b7a86'; ctx.fillRect(cx-r*0.5,cy-r*1.6,r,r*0.8); }
+  else if(s.type==='note'){ const r=size*0.07; ctx.shadowColor=s.obj.read?'#5a5a4a':'#d8c87a'; ctx.shadowBlur=size*0.1;
+    ctx.fillStyle=s.obj.read?'#8a8270':'#e8dcb0'; ctx.fillRect(cx-r,cy-r*1.3,r*2,r*2.6);
+    ctx.strokeStyle='#6a6450'; ctx.lineWidth=Math.max(1,size*0.005); for(let i=1;i<4;i++){ ctx.beginPath(); ctx.moveTo(cx-r*0.6,cy-r*1.3+i*r*0.6); ctx.lineTo(cx+r*0.6,cy-r*1.3+i*r*0.6); ctx.stroke(); } }
+  else if(s.type==='exit'){ const r=size*0.5; ctx.shadowColor='#7dff9a'; ctx.shadowBlur=size*0.3; ctx.fillStyle='rgba(120,255,150,0.5)';
+    ctx.fillRect(cx-r*0.25,horizon-size*0.5,r*0.5,size); ctx.fillStyle='#bfffce'; ctx.font=`${Math.floor(size*0.18)}px Georgia`; ctx.textAlign='center'; ctx.fillText('출구',cx,horizon); }
+  ctx.restore();
+}
+
+// 1인칭 손전등 + 팔/손 (입체)
+function drawViewModel(){
+  ctx.save();
+  const bx=Math.sin(walkBob)*8, by=Math.abs(Math.cos(walkBob))*6+(running?5:0);
+  if(equipped===0){
+    // ===== 손전등을 쥔 팔/손 =====
+    ctx.translate(RW*0.66+bx, RH+by);
+    ctx.rotate(-0.30);
+    // 팔뚝(소매) — 어깨 아래에서 올라옴
+    const sleeve=ctx.createLinearGradient(-40,0,40,0);
+    sleeve.addColorStop(0,'#0a0a0c'); sleeve.addColorStop(0.5,'#1c1c20'); sleeve.addColorStop(1,'#0c0c0e');
+    ctx.fillStyle=sleeve;
+    ctx.beginPath(); ctx.moveTo(-46,120); ctx.lineTo(46,120); ctx.lineTo(34,-70); ctx.lineTo(-30,-70); ctx.closePath(); ctx.fill();
+    // 소매 주름
+    ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.lineWidth=2;
+    for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(-40+i*4,90-i*30); ctx.lineTo(40-i*4,96-i*30); ctx.stroke(); }
+    // 손목/손등
+    const hand=ctx.createLinearGradient(-30,-110,30,-60);
+    hand.addColorStop(0,'#2a2420'); hand.addColorStop(0.5,'#3a322a'); hand.addColorStop(1,'#241e18');
+    ctx.fillStyle=hand;
+    ctx.beginPath(); ctx.ellipse(0,-78,34,30,0,0,7); ctx.fill();
+    // 손전등 본체 (손 위로 뻗음)
+    ctx.fillStyle='#15151a'; ctx.fillRect(-22,-188,44,118);
+    const body=ctx.createLinearGradient(-22,0,22,0);
+    body.addColorStop(0,'#0e0e12'); body.addColorStop(0.5,'#2c2c34'); body.addColorStop(1,'#0e0e12');
+    ctx.fillStyle=body; ctx.fillRect(-22,-188,44,118);
+    // 손가락 (손전등을 감싼)
+    ctx.fillStyle='#322a22';
+    for(let i=0;i<4;i++){ const fx=-20+i*13; ctx.beginPath(); ctx.roundRect(fx,-104,11,26,4); ctx.fill(); }
+    // 엄지
+    ctx.beginPath(); ctx.roundRect(18,-96,14,20,5); ctx.fill();
+    // 손전등 헤드 (앞쪽 굵게)
+    ctx.fillStyle='#0c0c0f'; ctx.fillRect(-30,-214,60,30);
+    const head=ctx.createLinearGradient(-30,0,30,0); head.addColorStop(0,'#000'); head.addColorStop(0.5,'#26262c'); head.addColorStop(1,'#000');
+    ctx.fillStyle=head; ctx.fillRect(-30,-214,60,30);
+    // 렌즈 + 발광
+    if(flashlight.on&&flashlight.battery>0){
+      const lg=ctx.createRadialGradient(0,-210,2,0,-210,52);
+      lg.addColorStop(0,`rgba(255,244,210,${0.6*flashlight.intensity})`); lg.addColorStop(0.5,`rgba(255,230,170,${0.25*flashlight.intensity})`); lg.addColorStop(1,'rgba(255,230,170,0)');
+      ctx.fillStyle=lg; ctx.fillRect(-54,-250,108,80);
+      ctx.fillStyle=`rgba(255,248,220,${0.9*flashlight.intensity})`; ctx.beginPath(); ctx.ellipse(0,-210,16,7,0,0,7); ctx.fill();
+    } else { ctx.fillStyle='#1a1a20'; ctx.beginPath(); ctx.ellipse(0,-210,16,7,0,0,7); ctx.fill(); }
+  } else if(equipped===1){
+    // 십자가 — 두 손으로 받쳐든
+    ctx.translate(RW*0.5+bx*0.5, RH+by);
+    const glow=crossActiveT>0; if(glow){ ctx.shadowColor='#bcdfff'; ctx.shadowBlur=36; }
+    // 손
+    ctx.fillStyle='#2a2420'; ctx.beginPath(); ctx.ellipse(-40,-30,26,20,0.3,0,7); ctx.fill(); ctx.beginPath(); ctx.ellipse(40,-30,26,20,-0.3,0,7); ctx.fill();
+    // 십자가
+    ctx.fillStyle=glow?'#e2f0ff':'#7a6c5c';
+    ctx.fillRect(-13,-205,26,215); ctx.fillRect(-50,-150,100,26);
+    ctx.shadowBlur=0;
+    if(glow){ ctx.globalAlpha=0.5; ctx.fillStyle='#bcdfff'; ctx.fillRect(-13,-205,26,215); ctx.globalAlpha=1; }
+  } else if(equipped===2){
+    // 라이터 + 손
+    ctx.translate(RW*0.62+bx, RH+by); ctx.rotate(-0.15);
+    ctx.fillStyle='#2a2420'; ctx.beginPath(); ctx.ellipse(0,-30,30,26,0,0,7); ctx.fill();
+    ctx.fillStyle='#322a22'; for(let i=0;i<4;i++){ ctx.beginPath(); ctx.roundRect(-22+i*12,-58,10,30,4); ctx.fill(); }
+    ctx.fillStyle='#15151a'; ctx.fillRect(-18,-86,36,40); ctx.fillStyle='#26262c'; ctx.fillRect(-18,-86,36,14);
+    const fy=-94-Math.random()*4; const fg=ctx.createRadialGradient(0,fy,1,0,fy,26*lighterIntensity);
+    fg.addColorStop(0,'rgba(255,244,190,0.95)'); fg.addColorStop(0.4,`rgba(255,150,40,${0.85*lighterIntensity})`); fg.addColorStop(1,'rgba(255,80,0,0)');
+    ctx.fillStyle=fg; ctx.beginPath(); ctx.ellipse(0,fy,11*lighterIntensity,20*lighterIntensity,0,0,7); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// =========================================================================
+//  미니맵 (적 항상 표시) + 위협 방향
+// =========================================================================
+const mm=$('minimap'); const mmx=mm.getContext('2d');
+function renderMinimap(){
+  const W=mm.width,H=mm.height,cell=W/MW; mmx.clearRect(0,0,W,H);
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++) if(map[y]&&map[y][x]!==0){ mmx.fillStyle='rgba(90,90,100,0.25)'; mmx.fillRect(x*cell,y*cell,cell+0.5,cell+0.5); }
+  for(const f of fuses) if(!f.taken){ mmx.fillStyle='#ff8a4a'; mmx.fillRect(f.gx?f.gx*cell:f.x*cell-cell/2,f.gy?f.gy*cell:f.y*cell-cell/2,cell,cell); }
+  for(const n of notes) if(!n.read){ mmx.fillStyle='#d8c87a'; mmx.fillRect((n.x-0.5)*cell+cell*0.25,(n.y-0.5)*cell+cell*0.25,cell*0.5,cell*0.5); }
+  if(exitActive){ mmx.fillStyle='#7dff9a'; mmx.fillRect(exitPos.x*cell,exitPos.y*cell,cell,cell); }
+  // 동료
+  for(const r of remotePlayers.values()) if(r.alive&&!r.escaped){ mmx.fillStyle='#5fa8d8'; mmx.beginPath(); mmx.arc(r.rx*cell,r.ry*cell,cell*0.55,0,7); mmx.fill(); }
+  // 적 — 항상 표시 (요청)
+  for(const e of enemies){ mmx.fillStyle=e.st==='chase'?'#ff2a2a':'#b03030';
+    mmx.shadowColor='#d11e22'; mmx.shadowBlur=e.st==='chase'?8:3; mmx.beginPath(); mmx.arc(e.rx*cell,e.ry*cell,cell*0.6,0,7); mmx.fill(); mmx.shadowBlur=0; }
+  // 플레이어
+  mmx.fillStyle='#e8dccb'; mmx.beginPath(); mmx.arc(player.x*cell,player.y*cell,cell*0.6,0,7); mmx.fill();
+  mmx.strokeStyle='rgba(232,220,203,0.5)'; mmx.beginPath(); mmx.moveTo(player.x*cell,player.y*cell);
+  mmx.lineTo((player.x+player.dirX*1.5)*cell,(player.y+player.dirY*1.5)*cell); mmx.stroke();
+}
+
+// 화면 가장자리 위협 방향 화살표
+function updateThreatArrow(){
+  const arrow=$('threatArrow'); let closest=null,cd=Infinity;
+  for(const e of enemies){ if(e.st!=='chase')continue; const d=Math.hypot(e.rx-player.x,e.ry-player.y); if(d<cd){cd=d;closest=e;} }
+  if(closest && cd<9){
+    let rel=Math.atan2(closest.ry-player.y,closest.rx-player.x)-player.dir;
+    while(rel>Math.PI)rel-=2*Math.PI; while(rel<-Math.PI)rel+=2*Math.PI;
+    // 화면 밖(시야 밖)일 때만 표시
+    if(Math.abs(rel)>FOV*0.5){
+      arrow.style.opacity='0.9';
+      const side = rel>0 ? 'right':'left';
+      arrow.style.left = side==='right'?'auto':'30px'; arrow.style.right = side==='right'?'30px':'auto';
+      arrow.style.top='50%'; arrow.textContent = side==='right'?'▶':'◀';
+    } else arrow.style.opacity='0';
+  } else arrow.style.opacity='0';
+}
+
+// 그레인
+const grain=$('grain'); const grx=grain.getContext('2d'); grain.width=160; grain.height=100;
+function renderGrain(){ const img=grx.createImageData(grain.width,grain.height); const d=img.data;
+  for(let i=0;i<d.length;i+=4){ const v=(Math.random()*255)|0; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; } grx.putImageData(img,0,0); }
+
+// =========================================================================
+//  HUD
+// =========================================================================
+let toastT=0;
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.style.opacity='1'; toastT=3.2; }
+function updateHUD(dt){
+  $('fuseCount').textContent=`${fusesCollected} / 3`;
+  $('objSub').textContent=exitActive?'출구를 찾아 탈출하라':'비상 전원을 복구하라';
+  $('batPct').textContent=Math.round(flashlight.battery)+'%'; $('batFill').style.width=flashlight.battery+'%';
+  $('stamPct').textContent=Math.round(stamina)+'%'; $('stamFill').style.width=stamina+'%';
+  bpmDisplay=lerp(bpmDisplay,bpm,dt*4); $('bpmVal').textContent=Math.round(bpmDisplay);
+  $('heartIcon').style.transform=`scale(${(1+0.18*Math.abs(Math.sin(time*bpm/60*Math.PI))).toFixed(2)})`;
+  let st='';
+  if(equipped===0) st=flashlight.on?'<span class="on">손전등 · 켜짐</span>':'<span class="off">손전등 · 꺼짐</span>';
+  else if(equipped===1) st=crossCooldown>0?`<span class="off">십자가 · 재충전 ${Math.ceil(crossCooldown)}s</span>`:'<span class="on">십자가 · 준비됨</span>';
+  else st='<span class="on">라이터 · 켜짐</span>';
+  $('flashState').innerHTML=st;
+  $('slotBat').style.width=flashlight.battery+'%';
+  const cd=$('slotCD'); if(crossCooldown>0){ cd.classList.remove('hidden'); cd.textContent=Math.ceil(crossCooldown); } else cd.classList.add('hidden');
+
+  // 동료 상태
+  const sq=$('squad'); let html='';
+  for(const [id,r] of remotePlayers){ const cls=r.escaped?'out':(!r.alive?'down':''); const tag=r.escaped?' ✓탈출':(!r.alive?' ✗':''); html+=`<div class="m ${cls}">▸ ${r.name||'동료'}${tag}</div>`; }
+  sq.innerHTML=html;
+
+  // 프롬프트
+  let p='';
+  for(const f of fuses) if(!f.taken&&Math.hypot(f.x-player.x,f.y-player.y)<0.95){ p='<span class="k">E</span> 퓨즈 회수'; break; }
+  if(!p) for(const b of batteries) if(!b.taken&&Math.hypot(b.x-player.x,b.y-player.y)<0.95){ p='<span class="k">E</span> 배터리 줍기'; break; }
+  if(!p) for(const n of notes) if(Math.hypot(n.x-player.x,n.y-player.y)<0.95){ p=`<span class="k">E</span> ${n.read?'기록 다시 읽기':'기록 읽기'}`; break; }
+  if(!p && exitActive && Math.hypot((exitPos.x+0.5)-player.x,(exitPos.y+0.5)-player.y)<1.1){ p='<span class="k">E</span> 탈출하기'; }
+  const pe=$('prompt'); pe.innerHTML=p; pe.style.opacity=(p&&alive)?'1':'0';
+
+  if(toastT>0){ toastT-=dt; if(toastT<=0)$('toast').style.opacity='0'; }
+  const dmg=$('damage'); if(nearestThreat<2.5&&alive) dmg.style.opacity=clamp((2.5-nearestThreat)/2.5,0,1)*0.7; else dmg.style.opacity='0';
+}
+
+// =========================================================================
+//  엔딩
+// =========================================================================
+function showEnding(m){
+  state='ended'; document.exitPointerLock();
+  $('hud').classList.add('hidden'); $('vignette').classList.add('hidden'); $('deadOverlay').style.opacity='0';
+  const e=m.ending;
+  const tEl=$('endTitle'); tEl.textContent=e.title; tEl.className='endtitle end-'+e.code;
+  $('endText').textContent=e.text;
+  $('endStats').innerHTML=`생존 탈출 <b>${m.survivors}</b> / ${m.totalPlayers}명 · 발견한 기록 <b>${m.notesRead}</b> / ${m.notesTotal}`;
+  $('btnAgain').classList.toggle('hidden', !isHost);
+  hideAllScreens(); $('endScreen').classList.remove('hidden');
+  // 사망 오버레이 텍스트 원복
+  $('deadOverlay').querySelector('.dt').textContent='당신은 쓰러졌다'; $('deadOverlay').querySelector('.dt').style.color='';
+}
+
+// =========================================================================
+//  메인 루프
+// =========================================================================
+let grainT=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  let dt=(ts-lastTs)/1000; lastTs=ts; if(dt>0.05)dt=0.05;
+  if(state!=='playing'){ return; }
+  time+=dt;
+  // 보간: 적/동료 렌더 위치
+  for(const e of enemies){ e.rx=lerp(e.rx,e.x,clamp(dt*12,0,1)); e.ry=lerp(e.ry,e.y,clamp(dt*12,0,1)); }
+  for(const r of remotePlayers.values()){ r.rx=lerp(r.rx,r.x,clamp(dt*12,0,1)); r.ry=lerp(r.ry,r.y,clamp(dt*12,0,1)); }
+
+  if(alive) updatePlayer(dt);
+  else {
+    // 사망/탈출 후에도 서버에 비활성 input 멈춤. 관전: 시점만 천천히
+    if(!pointerLocked){ const m=mouseXNorm; if(Math.abs(m)>0.1){ yaw+=Math.sign(m)*0.5*dt; setDir(yaw); } }
+  }
+  updateThreat(dt);
+  updateGrowls(dt);
+  render();
+  renderMinimap();
+  updateThreatArrow();
+  updateHUD(dt);
+  grainT+=dt; if(grainT>0.05){ renderGrain(); grainT=0; }
+}
+requestAnimationFrame(loop);
+
+// =========================================================================
+//  화면 전환 / 버튼
+// =========================================================================
+function hideAllScreens(){ ['menu','joinScreen','lobbyScreen','endScreen','connScreen'].forEach(id=>$(id).classList.add('hidden')); }
+function getName(){ return ($('nameInput').value||'').trim().slice(0,12) || '생존자'; }
+
+$('btnCreate').addEventListener('click',()=>{
+  $('menuErr').textContent='';
+  ensureConn(()=> sendWS({t:'create',name:getName()}));
+});
+$('btnJoinView').addEventListener('click',()=>{ hideAllScreens(); $('joinScreen').classList.remove('hidden'); $('codeInput').focus(); });
+$('btnSolo').addEventListener('click',()=>{
+  $('menuErr').textContent='';
+  ensureConn(()=> sendWS({t:'solo',name:getName()}));
+});
+$('btnJoin').addEventListener('click',()=>{
+  const code=($('codeInput').value||'').trim().toUpperCase(); $('joinErr').textContent='';
+  if(code.length<4){ $('joinErr').textContent='코드를 입력하세요.'; return; }
+  ensureConn(()=> sendWS({t:'join',code,name:getName()}));
+});
+$('btnBack1').addEventListener('click',()=>{ hideAllScreens(); $('menu').classList.remove('hidden'); });
+$('btnStart').addEventListener('click',()=> sendWS({t:'start'}));
+$('btnLeave').addEventListener('click',()=>{ if(ws) ws.close(); ws=null; hideAllScreens(); $('menu').classList.remove('hidden'); state='menu'; });
+$('btnAgain').addEventListener('click',()=> sendWS({t:'again'}));
+$('btnMenu').addEventListener('click',()=>{ if(ws) ws.close(); ws=null; location.reload(); });
+$('codeInput').addEventListener('keydown',e=>{ if(e.code==='Enter') $('btnJoin').click(); });
+
+function ensureConn(then){
+  if(ws&&ws.readyState===1){ then(); return; }
+  hideAllScreens(); $('connScreen').classList.remove('hidden');
+  connect(()=>{ then(); });
+}
+
+if(/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) $('mobileWarn').style.display='block';
+renderGrain();
+</script>
 </body>
 </html>

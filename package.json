@@ -1,12 +1,16 @@
 {
-    "name": "discord-logger-bot",
-    "version": "1.0.0",
-    "description": "디스코드 서버 활동 로깅 봇 (채팅/입퇴장/음성방)",
-    "main": "index.js",
-    "scripts": {
-        "start": "node index.js"
-    },
-    "dependencies": {
-        "discord.js": "^14.16.3"
-    }
+  "name": "ward-horror",
+  "version": "1.0.0",
+  "description": "병동 (The Ward) - 협동 공포 게임 / 1~5인 멀티플레이",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.17.0"
+  }
 }
